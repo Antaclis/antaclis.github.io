@@ -95,6 +95,13 @@ A small monospace readout in the corner of the stage reports the scan position a
 real units during the sweep (as in the prototype). Keep it: it is the one detail that says this is
 a real simulation and not a video.
 
+Composition on wide screens (my call): the room's centre is offset to the right of the text
+column (shift the camera's look-at target or use a view offset) so the captions do not cross the
+brightest data, and a soft horizontal gradient scrim in the background colour sits behind the text
+column, fading to transparent toward the stage, so text contrast stays above 4.5:1 while the plane
+and slices pass. On phones the room is centred and the scrim is a vertical gradient under the
+caption. The distance rule still keeps the whole room in view.
+
 Interaction: dragging on the stage rotates the room about its centre in azimuth and elevation. A
 flick gives it momentum that friction stops after a few seconds; the view stays where it ends up
 and the scroll-driven orbit continues from there. Elevation is clamped so the camera never flips.
@@ -233,7 +240,10 @@ Fallbacks:
   "Enforce HTTPS" in the repository's Pages settings after the certificate is issued).
 - Canonical URL, Open Graph URL and image URL, and the twitter card use `https://antaclis.com/`.
 - Email everywhere: `contact@antaclis.com`. The old Gmail address is removed.
-- Regenerate `site/assets/og.png` from `tools/og.html` with the new lead line.
+- Regenerate `site/assets/og.png` from `tools/og.html` with the new lead line, and remove the
+  "Early-stage research project" label from `tools/og.html`. Headless Chrome is not installed on
+  the development machine: either download a Chromium through Puppeteer for the one render, or a
+  team member runs the command from `tools/README.md` locally and commits the image.
 
 ## Left to the builder
 
