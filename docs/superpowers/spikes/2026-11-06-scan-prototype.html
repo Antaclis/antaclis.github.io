@@ -1,0 +1,579 @@
+<title>Antaclis Scan Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a fixed full-screen WebGL stage behind a single left-aligned column of captions
+     that scroll past it; scroll position drives the simulation. Single dark theme by choice. */
+  :root {
+    color-scheme: dark;
+    --bg: #0B0E1F;
+    --fg: #E8EAF2;
+    --muted: #9AA3C2;
+    --accent: #8AB6F9;
+    --accent-deep: #3458C8;
+    --glow: #DCE9FF;
+    --font-text: "Manrope", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-text);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage {
+    position: fixed; inset: 0; z-index: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: pan-y;   /* vertical swipes scroll; horizontal drags rotate the room */
+    cursor: grab;
+  }
+  #stage.dragging { cursor: grabbing; }
+  #hud {
+    position: fixed; z-index: 2;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    text-align: right;
+    white-space: pre;
+    pointer-events: none;
+  }
+  #note {
+    position: fixed; z-index: 2;
+    left: max(16px, env(safe-area-inset-left, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    opacity: 0.8;
+  }
+  .flow {
+    position: relative; z-index: 1;
+    pointer-events: none;           /* let drags reach the stage... */
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0;
+  }
+  .step {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 30rem;
+    padding-block: 10vh;
+    padding-left: clamp(0px, 3vw, 2.5rem);
+  }
+  .step.hero { min-height: 100vh; }
+  .step.tall { min-height: 150vh; justify-content: flex-start; padding-top: 32vh; }
+  .step .caption { position: sticky; top: 28vh; pointer-events: auto; }  /* ...except on the text */
+  .brand {
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    color: var(--fg);
+  }
+  h1 {
+    margin: 1rem 0 0;
+    font-size: clamp(2.6rem, 2rem + 4vw, 5rem);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  h2 {
+    margin: 0;
+    font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.5rem);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .lead, .step p {
+    margin: 1rem 0 0;
+    color: var(--muted);
+    max-width: 26rem;
+  }
+  .scroll-hint {
+    margin-top: 3rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  .contact {
+    margin-top: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    color: var(--fg);
+    user-select: all;
+  }
+  .contact a { color: var(--accent); text-decoration: none; }
+  .contact a:hover { text-decoration: underline; }
+  .end { padding-bottom: 20vh; }
+  #fallback {
+    display: none; position: fixed; inset: 0; z-index: 3;
+    place-items: center; padding: 2rem; text-align: center; color: var(--muted);
+    background: var(--bg);
+  }
+  @media (max-width: 640px) {
+    .step { max-width: 100%; }
+    .step .caption { top: auto; }
+    #hud { font-size: 0.68rem; }
+  }
+</style>
+
+<canvas id="stage" aria-hidden="true"></canvas>
+<div id="fallback">WebGL is not available in this browser, so the field simulation cannot be drawn.</div>
+<div id="hud"></div>
+<div id="note">prototype · scroll · drag to rotate</div>
+
+<main class="flow">
+  <section class="step hero">
+    <div class="caption">
+      <div class="brand">Antaclis</div>
+      <h1>Seeing through fields.</h1>
+      <p class="lead">Magnetic fields are everywhere and invisible. Two small magnets in a 5 by 5 metre room fill it with structure no eye can see.</p>
+      <div class="scroll-hint">scroll to measure</div>
+    </div>
+  </section>
+
+  <section class="step tall">
+    <div class="caption">
+      <h2>A quantum sensor measures the field, one slice at a time.</h2>
+      <p>Each pass through the room records the field strength on a plane. The field itself is never seen, only its trace in the data.</p>
+    </div>
+  </section>
+
+  <section class="step tall">
+    <div class="caption">
+      <h2>Simulation and machine learning turn the data back into its cause.</h2>
+      <p>From the measurements alone, Antaclis infers where the sources are, how strong they are, and which way they point.</p>
+    </div>
+  </section>
+
+  <section class="step end">
+    <div class="caption">
+      <div class="brand">Antaclis</div>
+      <h2>Custom AI for magnetic quantum sensing.</h2>
+      <p>Simulations and machine learning for inverse problems, built around quantum magnetometers.</p>
+      <div class="contact"><a href="mailto:contact@antaclis.com">contact@antaclis.com</a></div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  if (!window.THREE) return;
+
+  /* ---------------- Physics: two dipoles in a 500 x 500 x 300 cm room ---------------- */
+  const ROOM = [500, 500, 300];
+  const norm = (v) => { const n = Math.hypot(v[0], v[1], v[2]); return [v[0] / n, v[1] / n, v[2] / n]; };
+  const d2 = norm([1, -1, 0.5]);
+  const MAG = [
+    { p: [150, 350, 60],  m: [0, 0, 1.15] },                       // 1 cm^3 of N52, pointing up
+    { p: [350, 150, 150], m: [9.2 * d2[0], 9.2 * d2[1], 9.2 * d2[2]] }, // 8 cm^3, tilted
+  ];
+
+  // B(r) ~ sum over dipoles of (3 r (m.r)/r^2 - m) / r^3  (constant factor dropped)
+  function fieldAt(x, y, z, out) {
+    out[0] = out[1] = out[2] = 0;
+    for (const { p, m } of MAG) {
+      const rx = x - p[0], ry = y - p[1], rz = z - p[2];
+      const r2 = rx * rx + ry * ry + rz * rz;
+      if (r2 < 1e-6) continue;
+      const r = Math.sqrt(r2), inv3 = 1 / (r2 * r);
+      const k = 3 * (m[0] * rx + m[1] * ry + m[2] * rz) / r2;
+      out[0] += (k * rx - m[0]) * inv3;
+      out[1] += (k * ry - m[1]) * inv3;
+      out[2] += (k * rz - m[2]) * inv3;
+    }
+    return out;
+  }
+  const magAt = (x, y, z) => { const b = fieldAt(x, y, z, [0, 0, 0]); return Math.hypot(b[0], b[1], b[2]); };
+
+  /* ---------------- Field lines, traced with RK4 along the unit field ---------------- */
+  function traceLines() {
+    const SEED_R = 12, POLAR = [12, 18, 26, 40], NAZ = 8, STEP = 2.0, MAX = 900, STOP_R = 9;
+    const inRoom = (q) => q[0] > 0 && q[0] < ROOM[0] && q[1] > 0 && q[1] < ROOM[1] && q[2] > 0 && q[2] < ROOM[2];
+    const nearMagnet = (q) => MAG.some(({ p }) => Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < STOP_R);
+    const dir = (q) => { const b = fieldAt(q[0], q[1], q[2], [0, 0, 0]); const n = Math.hypot(b[0], b[1], b[2]) || 1; return [b[0] / n, b[1] / n, b[2] / n]; };
+    const lines = [];
+    for (const { p, m } of MAG) {
+      const u = norm(m);
+      const a = Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+      const v = norm([u[1] * a[2] - u[2] * a[1], u[2] * a[0] - u[0] * a[2], u[0] * a[1] - u[1] * a[0]]);
+      const w = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+      for (const deg of POLAR) {
+        const th = deg * Math.PI / 180;
+        for (let i = 0; i < NAZ; i++) {
+          const ph = (i + 0.5 * (deg / 12)) * 2 * Math.PI / NAZ;
+          const c = Math.cos(th), s = Math.sin(th), cp = Math.cos(ph), sp = Math.sin(ph);
+          let q = [0, 1, 2].map((k) => p[k] + SEED_R * (c * u[k] + s * (cp * v[k] + sp * w[k])));
+          const pts = [q.slice()];
+          for (let n = 0; n < MAX; n++) {
+            const k1 = dir(q);
+            const k2 = dir([q[0] + 0.5 * STEP * k1[0], q[1] + 0.5 * STEP * k1[1], q[2] + 0.5 * STEP * k1[2]]);
+            const k3 = dir([q[0] + 0.5 * STEP * k2[0], q[1] + 0.5 * STEP * k2[1], q[2] + 0.5 * STEP * k2[2]]);
+            const k4 = dir([q[0] + STEP * k3[0], q[1] + STEP * k3[1], q[2] + STEP * k3[2]]);
+            q = [0, 1, 2].map((k) => q[k] + STEP * (k1[k] + 2 * k2[k] + 2 * k3[k] + k4[k]) / 6);
+            if (!inRoom(q)) break;
+            pts.push(q.slice());
+            if (n > 5 && nearMagnet(q)) break;
+          }
+          if (pts.length > 4) lines.push(pts);
+        }
+      }
+    }
+    return lines;
+  }
+
+  /* ---------------- Scene ---------------- */
+  const canvas = document.getElementById("stage");
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+  } catch (e) {
+    document.getElementById("fallback").style.display = "grid";
+    return;
+  }
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, 1, 1, 6000);
+  camera.up.set(0, 0, 1);
+  const CENTRE = new THREE.Vector3(ROOM[0] / 2, ROOM[1] / 2, ROOM[2] / 2);
+
+  const ACCENT = new THREE.Color(0x8AB6F9);
+
+  // Room edges, faint
+  {
+    const box = new THREE.EdgesGeometry(new THREE.BoxGeometry(ROOM[0], ROOM[1], ROOM[2]));
+    const edges = new THREE.LineSegments(box, new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.10 }));
+    edges.position.copy(CENTRE);
+    scene.add(edges);
+  }
+
+  // Field lines as one LineSegments with a custom shader
+  const lines = traceLines();
+  const lineUniforms = {
+    uDraw: { value: 0 }, uSweep: { value: -2000 }, uRestore: { value: 0 },
+    uAlpha: { value: 0.75 }, uTime: { value: 0 }, uColor: { value: ACCENT },
+  };
+  {
+    const pos = [], aT = [], aPh = [];
+    lines.forEach((pts, li) => {
+      const ph = (li * 0.618) % 1;
+      const n = pts.length;
+      for (let i = 0; i < n - 1; i++) {
+        pos.push(...pts[i], ...pts[i + 1]);
+        aT.push(i / (n - 1), (i + 1) / (n - 1));
+        aPh.push(ph, ph);
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("aT", new THREE.Float32BufferAttribute(aT, 1));
+    g.setAttribute("aPh", new THREE.Float32BufferAttribute(aPh, 1));
+    const mat = new THREE.ShaderMaterial({
+      uniforms: lineUniforms,
+      transparent: true, depthWrite: false,
+      vertexShader: `
+        attribute float aT; attribute float aPh;
+        varying float vT; varying float vPh; varying float vX;
+        void main() {
+          vT = aT; vPh = aPh; vX = position.x;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uDraw, uSweep, uRestore, uAlpha, uTime; uniform vec3 uColor;
+        varying float vT; varying float vPh; varying float vX;
+        void main() {
+          float d = uDraw * 1.3 - vPh * 0.3;
+          float drawn = 1.0 - smoothstep(d - 0.04, d, vT);
+          float ahead = smoothstep(uSweep - 40.0, uSweep + 10.0, vX);
+          float keep = max(mix(0.10, 1.0, ahead), uRestore);
+          float taper = smoothstep(0.0, 0.03, vT) * (1.0 - smoothstep(0.97, 1.0, vT));
+          float pulse = 0.5 + 0.5 * sin(vT * 28.0 - uTime * 1.6 + vPh * 6.2832);
+          float a = uAlpha * drawn * keep * taper * (0.7 + 0.5 * pow(pulse, 6.0));
+          gl_FragColor = vec4(uColor, a);
+        }`,
+    });
+    scene.add(new THREE.LineSegments(g, mat));
+  }
+
+  /* ---------------- Measurement slices (planes of constant x) ---------------- */
+  const TW = 96, TH = 58, NSLICES = 28;
+  const sliceX = Array.from({ length: NSLICES }, (_, i) => (i + 0.5) * ROOM[0] / NSLICES);
+
+  // Log-magnitude window from the slice samples themselves
+  const logs = [];
+  for (const x of sliceX) for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++) {
+    logs.push(Math.log10(magAt(x, ROOM[1] * (i + 0.5) / TW, ROOM[2] * (j + 0.5) / TH) + 1e-12));
+  }
+  logs.sort((a, b) => a - b);
+  const LO = logs[Math.floor(logs.length * 0.25)], HI = logs[Math.floor(logs.length * 0.997)];
+
+  // Colour ramp: transparent navy -> deep blue -> accent -> near white
+  const RAMP = [[0.04, 0.06, 0.16, 0.0], [0.20, 0.35, 0.78, 0.55], [0.54, 0.71, 0.98, 0.85], [0.92, 0.95, 1.0, 1.0]];
+  function ramp(t, out, o) {
+    t = Math.min(1, Math.max(0, t));
+    const s = t * (RAMP.length - 1), k = Math.min(RAMP.length - 2, Math.floor(s)), f = s - k;
+    for (let c = 0; c < 4; c++) out[o + c] = Math.round(255 * (RAMP[k][c] + f * (RAMP[k + 1][c] - RAMP[k][c])));
+    out[o + 3] = Math.round(255 * Math.pow(t, 1.3) * 0.95);
+  }
+  function fillSlice(data, x) {
+    for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++) {
+      const v = (Math.log10(magAt(x, ROOM[1] * (i + 0.5) / TW, ROOM[2] * (j + 0.5) / TH) + 1e-12) - LO) / (HI - LO);
+      ramp(v, data, (j * TW + i) * 4);
+    }
+  }
+  function sliceGeometry(x) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute([x, 0, 0, x, ROOM[1], 0, x, ROOM[1], ROOM[2], x, 0, ROOM[2]], 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    return g;
+  }
+  function makeTexture() {
+    const tex = new THREE.DataTexture(new Uint8Array(TW * TH * 4), TW, TH, THREE.RGBAFormat);
+    tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
+    return tex;
+  }
+  const slices = sliceX.map((x) => {
+    const tex = makeTexture();
+    fillSlice(tex.image.data, x);
+    tex.needsUpdate = true;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(sliceGeometry(x), mat);
+    scene.add(mesh);
+    return { x, mesh, mat };
+  });
+
+  // The scanning plane: live texture plus a bright outline
+  const sweepTex = makeTexture();
+  const sweepMat = new THREE.MeshBasicMaterial({ map: sweepTex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+  const sweepMesh = new THREE.Mesh(sliceGeometry(0), sweepMat);
+  scene.add(sweepMesh);
+  const sweepEdge = new THREE.LineLoop(
+    new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, ROOM[1], 0, 0, ROOM[1], ROOM[2], 0, 0, ROOM[2]], 3)),
+    new THREE.LineBasicMaterial({ color: 0xDCE9FF, transparent: true, opacity: 0 })
+  );
+  scene.add(sweepEdge);
+
+  /* ---------------- The answer: two magnets ---------------- */
+  function glowTexture() {
+    const c = document.createElement("canvas"); c.width = c.height = 128;
+    const g = c.getContext("2d"), r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, "rgba(220,233,255,0.9)"); r.addColorStop(0.3, "rgba(138,182,249,0.35)"); r.addColorStop(1, "rgba(138,182,249,0)");
+    g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+  const glowTex = glowTexture();
+  // Each source is drawn as an inferred result: a glowing point, a thin arrow along its
+  // moment (length ~ |m|^(1/3)) and an uncertainty sphere, three faint rings, that
+  // tightens as the inference converges.
+  const ringGeo = (() => {
+    const pts = [];
+    for (let i = 0; i < 64; i++) { const a = i / 64 * 2 * Math.PI; pts.push(Math.cos(a), Math.sin(a), 0); }
+    return new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  })();
+  const magnets = MAG.map(({ p, m }) => {
+    const L = 26 * Math.cbrt(Math.hypot(m[0], m[1], m[2]) / 1.15);
+    const group = new THREE.Group();
+    group.position.set(p[0], p[1], p[2]);
+
+    // Uncertainty sphere: rings in the three coordinate planes (room frame)
+    const ringMat = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0, depthWrite: false });
+    const rings = new THREE.Group();
+    const r1 = new THREE.LineLoop(ringGeo, ringMat);
+    const r2 = new THREE.LineLoop(ringGeo, ringMat); r2.rotation.x = Math.PI / 2;
+    const r3 = new THREE.LineLoop(ringGeo, ringMat); r3.rotation.y = Math.PI / 2;
+    rings.add(r1, r2, r3);
+    group.add(rings);
+
+    // Moment arrow, oriented along m
+    const arrow = new THREE.Group();
+    const shaftMat = new THREE.LineBasicMaterial({ color: 0xDCE9FF, transparent: true, opacity: 0, depthWrite: false });
+    const shaft = new THREE.Line(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0, -L / 2, 0, 0, L / 2], 3)), shaftMat);
+    const tipMat = new THREE.MeshBasicMaterial({ color: 0xDCE9FF, transparent: true, opacity: 0, depthWrite: false });
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(L * 0.07, L * 0.22, 16), tipMat);
+    tip.rotation.x = Math.PI / 2; tip.position.z = L / 2;
+    arrow.add(shaft, tip);
+    arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...norm(m)));
+    group.add(arrow);
+
+    // Glowing core
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+    glow.scale.set(L * 1.6, L * 1.6, 1);
+    group.add(glow);
+
+    scene.add(group);
+    return { group, rings, ringMat, arrow, shaftMat, tipMat, glow, L };
+  });
+
+  /* ---------------- Scroll -> state ---------------- */
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+  const smooth = (a, b, v) => { const x = clamp01((v - a) / (b - a)); return x * x * (3 - 2 * x); };
+  const easeOutBack = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  const hud = document.getElementById("hud");
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  let progress = 0, target = 0, time = 0, last = 0, needsRender = true;
+
+  // Drag to rotate the room about its centre; a flick keeps it turning until friction stops it.
+  const drag = { az: 0, el: 0, vAz: 0, vEl: 0, active: false, id: null, lx: 0, ly: 0, released: 0 };
+  canvas.addEventListener("pointerdown", (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    drag.active = true; drag.id = e.pointerId; drag.lx = e.clientX; drag.ly = e.clientY;
+    drag.vAz = drag.vEl = 0;
+    canvas.classList.add("dragging");
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drag.active || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.lx, dy = e.clientY - drag.ly;
+    drag.lx = e.clientX; drag.ly = e.clientY;
+    const k = 2.2 / Math.max(400, canvas.clientWidth);   // a full-width drag turns about 2.2 rad
+    drag.az -= dx * k; drag.el += dy * k;
+    drag.vAz = -dx * k; drag.vEl = dy * k;
+  });
+  const endDrag = (e) => {
+    if (!drag.active || (e && e.pointerId !== drag.id)) return;
+    drag.active = false; drag.released = time;
+    canvas.classList.remove("dragging");
+  };
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("lostpointercapture", endDrag);
+
+  function readScroll() {
+    const doc = document.documentElement;
+    const max = Math.max(1, doc.scrollHeight - window.innerHeight);
+    target = clamp01((window.scrollY || doc.scrollTop) / max);
+  }
+
+  function applyState(p) {
+    // Stages
+    const A = [0.00, 0.16];   // lines draw in
+    const B = [0.16, 0.62];   // sweep
+    const C = [0.62, 0.72];   // hold on the data
+    const D = [0.72, 1.00];   // infer
+    const draw = smooth(A[0], A[1], p);
+    const sweepT = clamp01((p - B[0]) / (B[1] - B[0]));
+    const sweep = lerp(-70, ROOM[0] + 70, sweepT);
+    const infer = smooth(D[0], D[1], p);
+
+    lineUniforms.uDraw.value = draw;
+    lineUniforms.uSweep.value = p < B[0] ? -2000 : sweep;
+    lineUniforms.uRestore.value = infer * 0.85;
+
+    // Scanning plane
+    const planeOn = smooth(B[0], B[0] + 0.03, p) * (1 - smooth(B[1] - 0.02, B[1], p));
+    sweepMesh.position.x = sweep; sweepEdge.position.x = sweep;
+    sweepMat.opacity = planeOn * 0.9;
+    sweepEdge.material.opacity = planeOn * 0.8;
+    if (planeOn > 0) {
+      const x = Math.min(ROOM[0] - 0.01, Math.max(0.01, sweep));
+      fillSlice(sweepTex.image.data, x); sweepTex.needsUpdate = true;
+    }
+
+    // Recorded slices: appear as the plane passes, dissolve during inference (from the walls inwards)
+    slices.forEach((s, i) => {
+      const shown = smooth(s.x - 4, s.x + 14, sweep);
+      const order = Math.abs(i - (NSLICES - 1) / 2) / ((NSLICES - 1) / 2); // 1 at walls, 0 at centre
+      const gone = smooth(D[0] + 0.02 + (1 - order) * 0.14, D[0] + 0.10 + (1 - order) * 0.14, p);
+      s.mat.opacity = shown * (1 - gone) * 0.85;
+      s.mesh.visible = s.mat.opacity > 0.002;
+    });
+
+    // Sources emerge: a wide uncertainty sphere appears at each, tightens as the fit
+    // converges, and the moment arrow fades in as the estimate settles.
+    const reveal = smooth(D[0] + 0.06, D[0] + 0.12, p);     // rings appear
+    const converge = smooth(D[0] + 0.10, D[0] + 0.26, p);   // rings tighten
+    const settle = smooth(D[0] + 0.18, D[0] + 0.27, p);     // arrow and core
+    magnets.forEach(({ rings, ringMat, arrow, shaftMat, tipMat, glow, L }) => {
+      const r = lerp(110, L * 0.28, Math.pow(converge, 0.6));
+      rings.scale.setScalar(r);
+      rings.rotation.z = time * 0.12;
+      ringMat.opacity = reveal * lerp(0.25, 0.7, converge);
+      const s = Math.max(0.0001, easeOutBack(settle));
+      arrow.scale.setScalar(s);
+      shaftMat.opacity = settle * 0.95;
+      tipMat.opacity = settle * 0.95;
+      glow.material.opacity = settle * 0.95;
+    });
+
+    // Camera: slow orbit, slightly higher and closer at the end
+    const az = lerp(-0.55, 0.45, p) + 0.08 * Math.sin(time * 0.15) + drag.az;
+    const elRaw = lerp(0.40, 0.30, p) + drag.el;
+    const el = Math.min(1.35, Math.max(-0.2, elRaw));
+    if (el !== elRaw) { drag.el = el - lerp(0.40, 0.30, p); drag.vEl = 0; }  // stop at the poles
+    const aspect = camera.aspect || 1;
+    const dist = Math.max(lerp(840, 760, infer), 1180 / aspect);
+    camera.position.set(
+      CENTRE.x + dist * Math.cos(el) * Math.cos(az),
+      CENTRE.y + dist * Math.cos(el) * Math.sin(az),
+      CENTRE.z + dist * Math.sin(el));
+    camera.lookAt(CENTRE);
+
+    // HUD
+    let stage;
+    if (p < B[0]) stage = "field lines · 2 sources";
+    else if (p < B[1]) stage = `scan · x = ${Math.round(Math.min(ROOM[0], Math.max(0, sweep))).toString().padStart(3)} cm · slice ${Math.min(NSLICES, Math.max(0, Math.ceil(sweep / (ROOM[0] / NSLICES)))).toString().padStart(2)} / ${NSLICES}`;
+    else if (p < D[0]) stage = `data · ${NSLICES} slices · ${TW * TH * NSLICES} readings`;
+    else stage = `inference · ${Math.round(infer * 100).toString().padStart(3)} %`;
+    hud.textContent = `${stage}\nroom 500 × 500 × 300 cm`;
+  }
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    if (canvas.width !== Math.round(w * renderer.getPixelRatio()) || canvas.height !== Math.round(h * renderer.getPixelRatio())) {
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      needsRender = true;
+    }
+  }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
+    last = now;
+    time += dt;
+    resize();
+    // Ease toward the scroll target so the sweep glides
+    const diff = target - progress;
+    if (Math.abs(diff) > 1e-5) { progress += diff * Math.min(1, dt * 7); needsRender = true; }
+    else progress = target;
+    lineUniforms.uTime.value = time;
+    if (!drag.active) {
+      // Momentum after release: the room keeps turning and slows to a stop in a few seconds.
+      const damp = Math.exp(-dt * 1.4);
+      drag.az += drag.vAz * 12 * dt; drag.el += drag.vEl * 12 * dt;
+      drag.vAz *= damp; drag.vEl *= damp;
+      if (Math.abs(drag.vAz) < 1e-5) drag.vAz = 0;
+      if (Math.abs(drag.vEl) < 1e-5) drag.vEl = 0;
+    }
+    applyState(progress);
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener("scroll", readScroll, { passive: true });
+  window.addEventListener("resize", () => { readScroll(); resize(); });
+  readScroll();
+  progress = target;
+  requestAnimationFrame(frame);
+})();
+</script>
