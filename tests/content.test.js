@@ -20,7 +20,9 @@ test("domain, email and metadata point at antaclis.com", () => {
   assert.match(html, /<link rel="canonical" href="https:\/\/antaclis\.com\/">/);
   assert.match(html, /og:url" content="https:\/\/antaclis\.com\/"/);
   assert.match(html, /og:image" content="https:\/\/antaclis\.com\/assets\/og\.png"/);
-  assert.ok((html.match(/contact@antaclis\.com/g) || []).length >= 2, "button and visible text");
+  assert.match(html, /<a class="button" href="mailto:contact@antaclis\.com[^"]*">Contact us<\/a>/);
+  assert.match(html, /<p class="email">contact@antaclis\.com<\/p>/, "address as visible text");
+  assert.match(html, /<footer[\s\S]*href="mailto:contact@antaclis\.com"[\s\S]*<\/footer>/, "address in the footer");
   assert.match(html, /<title>Antaclis · Seeing through fields<\/title>/);
 });
 

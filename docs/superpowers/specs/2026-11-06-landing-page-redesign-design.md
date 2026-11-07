@@ -125,12 +125,12 @@ as now; each person approves their own line. No photos.
 
 ### Contact
 
-A short invitation and the email address, `contact@antaclis.com`, both as a mailto button and as
-visible selectable text. No form.
+A short invitation, a "Contact us" mailto button and, beside it, the address `contact@antaclis.com`
+as visible selectable text. No form.
 
 ### Footer
 
-"© 2026 Antaclis". Nothing about legal status.
+"© 2026 Antaclis" and the address as a mailto link. Nothing about legal status.
 
 ## Copy
 
@@ -157,7 +157,7 @@ shorter and less explanatory). The builder uses this copy unless the team replac
   - Inverse problems: "From readings back to causes, with uncertainties rather than a single
     best guess."
 - Contact, statement: "Working on something that involves magnetic sensors? Write to us."
-  Button: "Write to contact@antaclis.com" (or "Get in touch" with the address beside it).
+  Button: "Contact us", with the address beside it.
 
 Style: plain declarative sentences, sentence case, no em-dashes, no exclamation marks, no arrows
 in link text, British spelling as in the team's documents.
