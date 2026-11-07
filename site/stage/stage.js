@@ -20,12 +20,13 @@
 
    The page works without this script: unless WebGL starts, <html> never gets
    the class has-stage, the stage stays hidden and the static SVG stays.
-   Debug: ?nowebgl=1 forces that fallback; ?p=0.45 jumps to progress 0.45.
+   Debug: ?nowebgl=1 forces that fallback; ?p=0.45 jumps to progress 0.45
+   (with the load-time draw-in already finished).
    ========================================================================== */
 import * as THREE from "../vendor/three.module.min.js";
 import { ROOM, DIPOLES, traceFieldLines, sliceSamples, logWindow } from "./model.js";
 import {
-  SLICE_X, SLICE_RES, sequenceState, colourRamp, cameraDistance, progressWithin,
+  SLICE_X, SLICE_RES, INTRO_SECONDS, sequenceState, colourRamp, cameraDistance, compositionFrame, frameCentre, progressWithin,
   createDrag, dragStart, dragMove, dragEnd, stepDrag, readoutText,
 } from "./sequence.js";
 
@@ -41,16 +42,16 @@ const ARROW_SIZE = 26;       // cm, arrow length of the smaller source (others s
 const RING_WIDE = 110;       // cm, uncertainty-sphere radius when the rings appear
 const RING_TIGHT = 0.28;     // final radius, as a fraction of the arrow length
 const RING_SPIN = 0.12;      // rad/s, slow ambient turn of the rings
+const RING_ALPHA = [0.45, 0.85];  // ring opacity while wide, and once tightened
+const RING_FADE_IN = 2.5;    // rings reach full opacity at 40% of their reveal
+const DIST_EASE = 2;         // 1/s, how fast the camera closes in again after a turn needed more room
 const EASE_RATE = 7;         // 1/s, how fast displayed progress follows the scroll
 const MAX_DT = 0.1;          // s, longest frame step (after a hidden tab, for instance)
 const HINT_TIMEOUT = 8000;   // ms before the drag hint hides on its own
-// Composition. Wide or landscape screens (same query as the horizontal scrim in
-// styles.css): the room sits right of the caption column. Otherwise (phones,
-// portrait tablets): centred across, lowered below the captions, which are
-// pinned at 28vh and end above 60% of the height.
+// Composition (frames in sequence.js). Wide or landscape screens, same query as
+// the horizontal scrim in styles.css: the whole room right of the caption
+// column. Otherwise (phones, portrait tablets): the whole room below the captions.
 const WIDE = "(min-width: 56rem), (min-aspect-ratio: 3/2)";
-const SHIFT = 0.28;          // wide: room centre offset right, in half-widths of the view
-const LOWER = 0.44;          // otherwise: room centre offset down, in half-heights of the view
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -289,6 +290,8 @@ function start(renderer) {
   let target = 0;        // scroll progress through #sequence
   let progress = 0;      // displayed progress, eased toward target
   let dirty = true;      // something other than time changed since the last frame
+  let fitFrame = compositionFrame("full");  // where the room must fit on screen
+  let distance = NaN;    // displayed camera distance (NaN: take the fit at once)
 
   function apply(p, dt) {
     const state = sequenceState(p, { time, reducedMotion: reducedMotion.matches });
@@ -317,7 +320,7 @@ function start(renderer) {
       m.group.visible = state.ringReveal > 0;
       m.rings.scale.setScalar(lerp(RING_WIDE, m.L * RING_TIGHT, Math.pow(state.converge, 0.6)));
       if (state.pulsesOn) m.rings.rotation.z = time * RING_SPIN;
-      m.ringMat.opacity = state.ringReveal * lerp(0.25, 0.7, state.converge);
+      m.ringMat.opacity = Math.min(1, state.ringReveal * RING_FADE_IN) * lerp(RING_ALPHA[0], RING_ALPHA[1], state.converge);
       m.arrow.scale.setScalar(Math.max(1e-4, easeOutBack(state.settle)));
       m.arrowMat.opacity = m.tipMat.opacity = m.core.material.opacity = state.settle * MARKER_ALPHA;
     }
@@ -325,22 +328,25 @@ function start(renderer) {
     // Camera: orbit the room centre at the scroll-driven angles plus the drag offsets.
     stepDrag(drag, dt, state.elevation);  // momentum, friction and the elevation clamp
     const az = state.azimuth + drag.az, el = state.elevation + drag.el;
-    const dist = cameraDistance(camera.aspect, state.infer);
+    // Never closer than the fit (the whole room in the frame); after a turn that
+    // needed more room, close in again slowly so the view does not pump.
+    const fit = cameraDistance({ aspect: camera.aspect, infer: state.infer, azimuth: az, elevation: el, fovY: FOV, frame: fitFrame });
+    distance = !(distance <= fit) ? fit : distance + (fit - distance) * Math.min(1, dt * DIST_EASE);
+    const dist = distance;
     camera.position.set(
       CENTRE.x + dist * Math.cos(el) * Math.cos(az),
       CENTRE.y + dist * Math.cos(el) * Math.sin(az),
       CENTRE.z + dist * Math.sin(el));
     camera.lookAt(CENTRE);
-    // Pan the camera in its own plane (no turn) to place the room on screen.
+    // Pan the camera in its own plane (no turn) so the room's centre lands on
+    // the frame's centre: exactly the offsets cameraDistance fitted the room to.
     camera.updateMatrixWorld();
     const halfHeight = dist * Math.tan(THREE.MathUtils.degToRad(FOV / 2));  // of the view, at the centre
-    if (wide.matches) {
-      pan.setFromMatrixColumn(camera.matrixWorld, 0);  // view right
-      camera.position.addScaledVector(pan, -SHIFT * halfHeight * camera.aspect);
-    } else {
-      pan.setFromMatrixColumn(camera.matrixWorld, 1);  // view up
-      camera.position.addScaledVector(pan, LOWER * halfHeight);
-    }
+    const [ox, oy] = frameCentre(fitFrame);
+    pan.setFromMatrixColumn(camera.matrixWorld, 0);  // view right
+    camera.position.addScaledVector(pan, -ox * halfHeight * camera.aspect);
+    pan.setFromMatrixColumn(camera.matrixWorld, 1);  // view up
+    camera.position.addScaledVector(pan, -oy * halfHeight);
 
     if (readout) {
       const text = readoutText(p, state);
@@ -353,9 +359,14 @@ function start(renderer) {
   // Until the visitor scrolls or drags, any scroll jump (deep link, reload,
   // ?p=) shows its state at once instead of easing through the sequence.
   let snap = true;
+  const heroCaption = document.querySelector(".beat-hero .caption");
   const measure = () => {
     seqTop = sequence.getBoundingClientRect().top + window.scrollY;
     seqHeight = sequence.offsetHeight;
+    // The caption column's right edge, in device coordinates of the canvas.
+    const w = canvas.clientWidth || window.innerWidth;
+    const textRight = heroCaption ? (2 * heroCaption.getBoundingClientRect().right) / w - 1 : -1;
+    fitFrame = compositionFrame(wide.matches ? "wide" : "stacked", { textRight });
   };
   const readScroll = () => {
     target = progressWithin(window.scrollY, seqTop, seqHeight, window.innerHeight);
@@ -372,6 +383,7 @@ function start(renderer) {
   // than the fallback, so the browser's own jump may have landed in the wrong place.
   const KEY = "antaclis-scroll";
   const debugP = parseFloat(new URLSearchParams(location.search).get("p"));
+  if (Number.isFinite(debugP)) time = INTRO_SECONDS;  // a ?p= screenshot shows the lines drawn
   const navType = performance.getEntriesByType?.("navigation")[0]?.type;
   let saved = NaN;
   try {
@@ -397,6 +409,7 @@ function start(renderer) {
     }
     readScroll();
     progress = target;
+    distance = NaN;
   };
   requestAnimationFrame(settleScroll);  // after the has-stage layout
   if (document.readyState !== "complete") window.addEventListener("load", settleScroll, { once: true });
@@ -433,13 +446,14 @@ function start(renderer) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    measure();  // the frame depends on the canvas width
     dirty = true;
   };
   const relayout = () => { measure(); readScroll(); dirty = true; };
   new ResizeObserver(resize).observe(canvas);
   new ResizeObserver(relayout).observe(sequence);
   window.addEventListener("resize", relayout);
-  wide.addEventListener?.("change", () => { dirty = true; });
+  wide.addEventListener?.("change", relayout);
   reducedMotion.addEventListener?.("change", () => { dirty = true; });
 
   // Draw only while the stage is on screen.

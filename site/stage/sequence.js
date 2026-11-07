@@ -6,6 +6,9 @@ import { ROOM } from "./model.js";
 // Where each chapter of the scroll begins and ends (progress 0..1).
 export const STAGES = { draw: [0, 0.16], sweep: [0.16, 0.62], hold: [0.62, 0.72], infer: [0.72, 1] };
 export const NSLICES = 28;
+// Seconds over which the field lines also draw in by themselves after load, so
+// the hero is never an empty box (skipped under reduced motion).
+export const INTRO_SECONDS = 2.5;
 // Resolution of each slice texture [along y, along z]: one field reading per texel.
 export const SLICE_RES = [96, 58];
 // Centre of each recorded slice along the room's long axis, in cm.
@@ -21,7 +24,8 @@ const smooth = (a, b, v) => { const x = clamp01((v - a) / (b - a)); return x * x
 export function sequenceState(p, { time = 0, reducedMotion = false } = {}) {
   const [sweepA, sweepB] = STAGES.sweep;
   const [inferA] = STAGES.infer;
-  const draw = smooth(STAGES.draw[0], STAGES.draw[1], p);
+  const intro = reducedMotion ? 1 : smooth(0, INTRO_SECONDS, time);
+  const draw = Math.max(smooth(STAGES.draw[0], STAGES.draw[1], p), intro);
   const sweepX = lerp(-70, ROOM[0] + 70, clamp01((p - sweepA) / (sweepB - sweepA)));
   const infer = smooth(inferA, 1, p);
 
@@ -64,9 +68,48 @@ export function colourRamp(t) {
   return out;
 }
 
-// Camera distance: closer at the end, and far enough back to fit narrow screens.
-export function cameraDistance(aspect, infer) {
-  return Math.max(lerp(840, 760, infer), 1180 / aspect);
+// Where on screen the room may sit, as a window in normalised device
+// coordinates (-1..1 across and up). "full": the whole view less a margin.
+// "wide": right of the caption column, whose right edge is textRight.
+// "stacked" (phones, portrait tablets): below the captions, which are pinned at
+// 28vh and end above 60% of the height, and above the readout.
+export const COMPOSITION = { margin: 0.04, gap: 0.04, maxLeft: 0.4, stackedTop: -0.2, bottom: -0.86 };
+
+export function compositionFrame(layout, { textRight = -1 } = {}) {
+  const { margin: m, gap, maxLeft, stackedTop, bottom } = COMPOSITION;
+  if (layout === "wide") return { left: Math.min(maxLeft, Math.max(-1 + m, textRight + gap)), right: 1 - m, bottom, top: 1 - m };
+  if (layout === "stacked") return { left: -1 + m, right: 1 - m, bottom, top: stackedTop };
+  return { left: -1 + m, right: 1 - m, bottom: -1 + m, top: 1 - m };
+}
+
+// The stage pans the camera so the room's centre lands here (as the distance grows).
+export const frameCentre = (f) => [(f.left + f.right) / 2, (f.bottom + f.top) / 2];
+
+// Camera distance: the prototype's (closer at the end), or further if needed so
+// all eight corners of the room project inside the frame for this view. The
+// camera orbits the room centre at (azimuth, elevation), looks at it, then pans
+// in the view plane by frameCentre(frame) times the half-width and half-height
+// of the view at distance d. A corner at p (from the room centre) then lands at
+//   x = (p.right / (t a) + ox d) / (p.fwd + d),   y = (p.up / t + oy d) / (p.fwd + d)
+// with t = tan(fovY / 2) and a the aspect, so each frame edge is a linear bound on d.
+export function cameraDistance({ aspect, infer = 0, azimuth, elevation, fovY, frame = compositionFrame("full") }) {
+  const t = Math.tan((fovY * Math.PI) / 360);
+  const ce = Math.cos(elevation), se = Math.sin(elevation), ca = Math.cos(azimuth), sa = Math.sin(azimuth);
+  const fwd = [-ce * ca, -ce * sa, -se];          // view direction
+  const right = [-sa, ca, 0];                      // fwd x z, normalised
+  const up = [-se * ca, -se * sa, ce];             // right x fwd
+  const [ox, oy] = frameCentre(frame);
+  // Smallest d with lo <= (c + o d) / (w + d) <= hi, given w + d > 0 and lo < o < hi.
+  const bound = (c, w, o, lo, hi) => Math.max((c - hi * w) / (hi - o), (lo * w - c) / (o - lo));
+  let d = lerp(840, 760, infer);
+  for (const x of [-ROOM[0] / 2, ROOM[0] / 2]) for (const y of [-ROOM[1] / 2, ROOM[1] / 2]) for (const z of [-ROOM[2] / 2, ROOM[2] / 2]) {
+    const dot = (v) => v[0] * x + v[1] * y + v[2] * z;
+    const w = dot(fwd);
+    d = Math.max(d, 1 - w,
+      bound(dot(right) / (t * aspect), w, ox, frame.left, frame.right),
+      bound(dot(up) / t, w, oy, frame.bottom, frame.top));
+  }
+  return d;
 }
 
 // Scroll progress through the sequence section, clamped to 0..1.

@@ -220,23 +220,25 @@ a:hover { color: var(--accent); }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to bottom, var(--bg) 50%, transparent 64%);
+  background: linear-gradient(to bottom, var(--bg) 48%, transparent 60%);
 }
-/* Wide or landscape: stage.js puts the room right of the text, the scrim
-   runs left to right. Keep this query in step with WIDE in stage.js. */
+/* Phones and portrait tablets: stage.js fits the room below 60% of the height,
+   under the pinned captions. Wide or landscape: it fits the whole room right of
+   the caption column, and the scrim runs left to right, clear before the room.
+   Keep this query in step with WIDE in stage.js. */
 @media (min-width: 56rem), (min-aspect-ratio: 3/2) {
   .scrim {
     /* Right edge of the caption column (.beat centring and gutter, then
-       .caption's max width): solid behind the text, fading out beyond it */
+       .caption's max width): solid behind the text, gone by the room */
     --text-edge: calc(max(0px, (100% - var(--max)) / 2) + var(--gutter) + var(--caption));
     background: linear-gradient(to right,
-      var(--bg) 0, var(--bg) calc(var(--text-edge) - 12rem),
-      rgb(13 15 34 / 0.88) calc(var(--text-edge) - 1rem),
-      transparent calc(var(--text-edge) + 9rem));
+      var(--bg) 0, var(--bg) calc(var(--text-edge) - 10rem),
+      rgb(13 15 34 / 0.85) calc(var(--text-edge) - 2rem),
+      transparent calc(var(--text-edge) + 1rem));
   }
 }
-/* Phones and portrait tablets: the room sits below the pinned captions, so a
-   caption scrolling in from the bottom crosses it. A soft veil travels with
+/* Phones and portrait tablets: a caption scrolling in from the bottom crosses
+   the room. A soft veil travels with
    each caption to keep its text legible on the way. */
 .has-stage .caption {
   background: rgb(13 15 34 / 0.9);
