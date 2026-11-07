@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { ROOM } from "../site/stage/model.js";
 import { STAGES, NSLICES, SLICE_X, sequenceState, colourRamp, cameraDistance, progressWithin,
          INTRO_SECONDS, COMPOSITION, compositionFrame, frameCentre,
-         createDrag, dragStart, dragMove, dragEnd, stepDrag, readoutText } from "../site/stage/sequence.js";
+         createDrag, dragStart, dragMove, dragEnd, dragCancel, stepDrag, readoutText,
+         easeDistance, DIST_EASE, FLICK_WINDOW } from "../site/stage/sequence.js";
 
 const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
 
@@ -155,6 +156,48 @@ test("drag has momentum, friction, an elevation clamp and a clean end", () => {
   near(0.4 + d.el, 1.35, 1e-9); assert.equal(d.vEl, 0, "clamped at the pole");
   dragStart(d, 0, 0); dragMove(d, 50, 0, 1200); dragEnd(d);
   assert.equal(d.active, false);
+});
+
+test("a cancelled drag ends without momentum", () => {
+  const d = createDrag();
+  dragStart(d, 100, 100, 1); dragMove(d, 103, 100, 1200, 1.01);
+  assert.ok(d.vAz !== 0, "the jitter gave it a velocity");
+  dragCancel(d);
+  assert.equal(d.active, false);
+  assert.equal(d.vAz, 0); assert.equal(d.vEl, 0);
+  const az = d.az;
+  stepDrag(d, 0.1, 0.4); assert.equal(d.az, az, "no residual spin");
+});
+
+test("only a fresh flick keeps momentum on release", () => {
+  assert.ok(FLICK_WINDOW > 0 && FLICK_WINDOW <= 0.2, "about 100 ms");
+  const fresh = createDrag();
+  dragStart(fresh, 0, 0, 10); dragMove(fresh, 50, 0, 1200, 10.02);
+  dragEnd(fresh, 10.02 + FLICK_WINDOW / 2);
+  assert.equal(fresh.active, false);
+  assert.ok(fresh.vAz < 0, "a release right after the move keeps turning");
+  const stale = createDrag();
+  dragStart(stale, 0, 0, 10); dragMove(stale, 50, 30, 1200, 10.02);
+  dragEnd(stale, 10.02 + 3 * FLICK_WINDOW);  // dragged, paused, then let go
+  assert.equal(stale.active, false);
+  assert.equal(stale.vAz, 0); assert.equal(stale.vEl, 0);
+  const az = stale.az;
+  stepDrag(stale, 0.1, 0.4); assert.equal(stale.az, az, "no stale fling");
+});
+
+test("camera distance never closer than the fit, eases in, snaps out", () => {
+  assert.ok(DIST_EASE > 0);
+  assert.equal(easeDistance(NaN, 800, 0.016), 800, "first frame takes the fit");
+  assert.equal(easeDistance(undefined, 800, 0.016), 800);
+  assert.equal(easeDistance(700, 800, 0.016), 800, "the room needs more space: out at once");
+  assert.equal(easeDistance(800, 800, 0.016), 800);
+  const d = easeDistance(900, 800, 0.016);
+  assert.ok(d > 800 && d < 900, `closes in slowly: ${d}`);
+  assert.ok(easeDistance(d, 800, 0.016) < d, "keeps moving toward the fit");
+  assert.equal(easeDistance(900, 800, 10), 800, "a long step lands on the fit");
+  for (const [prev, fit, dt] of [[900, 800, 0.1], [1e4, 760, 0.05], [790, 800, 0.5], [801, 800, 0.016]]) {
+    assert.ok(easeDistance(prev, fit, dt) >= fit, `never below the fit (${prev}, ${fit}, ${dt})`);
+  }
 });
 
 test("readout text names the stage in real units", () => {

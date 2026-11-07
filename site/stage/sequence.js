@@ -112,28 +112,52 @@ export function cameraDistance({ aspect, infer = 0, azimuth, elevation, fovY, fr
   return d;
 }
 
+// 1/s, how fast the camera closes in again after a turn needed more room.
+export const DIST_EASE = 2;
+
+// Displayed camera distance for this frame: never closer than the fit (the whole
+// room in the frame), so it moves out at once when the room needs more space and
+// closes in slowly afterwards, which keeps the view from pumping during a turn.
+// A prev that is not a number (first frame, after a jump) takes the fit.
+export function easeDistance(prev, fit, dt) {
+  if (!Number.isFinite(prev) || prev <= fit) return fit;
+  return prev + (fit - prev) * Math.min(1, dt * DIST_EASE);
+}
+
 // Scroll progress through the sequence section, clamped to 0..1.
 export function progressWithin(scrollTop, sequenceTop, sequenceHeight, viewportHeight) {
   return clamp01((scrollTop - sequenceTop) / Math.max(1, sequenceHeight - viewportHeight));
 }
 
 // Drag to rotate: az and el are offsets added to the scroll-driven camera angles.
-export const createDrag = () => ({ az: 0, el: 0, vAz: 0, vEl: 0, active: false, lx: 0, ly: 0 });
+// Times are in seconds, from the caller's clock (event timestamps, for instance).
+export const createDrag = () => ({ az: 0, el: 0, vAz: 0, vEl: 0, active: false, lx: 0, ly: 0, lt: 0 });
+// s, a release this soon after the last move is a flick and keeps the velocity;
+// later (dragged, paused, let go) the room stops where it is.
+export const FLICK_WINDOW = 0.1;
 
-export function dragStart(drag, x, y) {
-  drag.active = true; drag.lx = x; drag.ly = y; drag.vAz = drag.vEl = 0;
+export function dragStart(drag, x, y, time = 0) {
+  drag.active = true; drag.lx = x; drag.ly = y; drag.lt = time; drag.vAz = drag.vEl = 0;
 }
 
-export function dragMove(drag, x, y, width) {
+export function dragMove(drag, x, y, width, time = 0) {
   if (!drag.active) return;
   const dx = x - drag.lx, dy = y - drag.ly;
-  drag.lx = x; drag.ly = y;
+  drag.lx = x; drag.ly = y; drag.lt = time;
   const k = 2.2 / Math.max(400, width); // a full-width drag turns about 2.2 rad
   drag.az -= dx * k; drag.el += dy * k;
   drag.vAz = -dx * k; drag.vEl = dy * k;
 }
 
-export function dragEnd(drag) { drag.active = false; }
+// Release. Given the release time, the velocity survives only for a fresh flick;
+// without a time it always survives.
+export function dragEnd(drag, time) {
+  drag.active = false;
+  if (time !== undefined && !(time - drag.lt <= FLICK_WINDOW)) drag.vAz = drag.vEl = 0;
+}
+
+// End without momentum (the page took the gesture over, or capture was lost).
+export function dragCancel(drag) { drag.active = false; drag.vAz = drag.vEl = 0; }
 
 // Advance by dt seconds: after release the room keeps turning and friction slows it
 // to a stop. Elevation is kept off the poles (the camera elevation stays in -0.2..1.35).

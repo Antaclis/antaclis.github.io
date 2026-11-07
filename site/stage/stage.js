@@ -13,13 +13,15 @@
 
    This file only draws. The physics (field, lines, slices) is in model.js and
    everything that depends on scroll, time or drag (stage boundaries, sweep,
-   slice timing, camera path, drag law) is in sequence.js; both are tested in
-   Node. Constants here are visual only (colours, sizes, opacities, layout),
-   plus the three UI timings the brief fixes: easing rate, frame-step cap and
-   drag-hint timeout.
+   slice timing, camera path and distance easing, drag law and flick window)
+   is in sequence.js; both are tested in Node. Constants here are visual only
+   (colours, sizes, opacities, layout), plus the three UI timings the brief
+   fixes: scroll easing rate, frame-step cap and drag-hint timeout.
 
    The page works without this script: unless WebGL starts, <html> never gets
-   the class has-stage, the stage stays hidden and the static SVG stays.
+   the class has-stage, the stage stays hidden and the static SVG stays. If
+   start-up fails after that (a shader or driver problem), start() takes the
+   class away again and the static SVG comes back.
    Debug: ?nowebgl=1 forces that fallback; ?p=0.45 jumps to progress 0.45
    (with the load-time draw-in already finished).
    ========================================================================== */
@@ -27,7 +29,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { ROOM, DIPOLES, traceFieldLines, sliceSamples, logWindow } from "./model.js";
 import {
   SLICE_X, SLICE_RES, INTRO_SECONDS, sequenceState, colourRamp, cameraDistance, compositionFrame, frameCentre, progressWithin,
-  createDrag, dragStart, dragMove, dragEnd, stepDrag, readoutText,
+  createDrag, dragStart, dragMove, dragEnd, dragCancel, stepDrag, easeDistance, readoutText,
 } from "./sequence.js";
 
 /* ---- Visual constants ---------------------------------------------------- */
@@ -44,7 +46,6 @@ const RING_TIGHT = 0.28;     // final radius, as a fraction of the arrow length
 const RING_SPIN = 0.12;      // rad/s, slow ambient turn of the rings
 const RING_ALPHA = [0.45, 0.85];  // ring opacity while wide, and once tightened
 const RING_FADE_IN = 2.5;    // rings reach full opacity at 40% of their reveal
-const DIST_EASE = 2;         // 1/s, how fast the camera closes in again after a turn needed more room
 const EASE_RATE = 7;         // 1/s, how fast displayed progress follows the scroll
 const MAX_DT = 0.1;          // s, longest frame step (after a hidden tab, for instance)
 const HINT_TIMEOUT = 8000;   // ms before the drag hint hides on its own
@@ -71,7 +72,41 @@ if (canvas && sequence && !/[?&]nowebgl=1\b/.test(location.search)) {
 }
 if (renderer) start(renderer);
 
+// Runs the stage, guarded: if anything throws on the way (a shader or driver
+// problem, for instance), or a later frame does, fail() undoes what run() set up
+// and the page shows the static drawing, as with ?nowebgl=1.
 function start(renderer) {
+  const controller = new AbortController();
+  const life = {
+    signal: controller.signal,  // on every listener run() adds
+    observers: [],              // disconnected on failure
+    hintTimer: 0,
+    failed: false,
+    fail(err) {
+      if (life.failed) return;
+      life.failed = true;       // stops the render loop and any pending scroll fix
+      controller.abort();
+      life.observers.forEach((o) => o.disconnect());
+      clearTimeout(life.hintTimer);
+      document.documentElement.classList.remove("has-stage");
+      for (const id of ["readout", "drag-hint"]) {
+        const el = document.getElementById(id);
+        if (el) el.hidden = true;
+      }
+      try { if ("scrollRestoration" in history) history.scrollRestoration = "auto"; } catch (_) { /* ignore */ }
+      try { renderer.dispose(); } catch (_) { /* already gone */ }
+      console.warn("Antaclis: the 3D stage could not run, showing the static drawing instead.", err);
+    },
+  };
+  try {
+    run(renderer, life);
+  } catch (err) {
+    life.fail(err);
+  }
+}
+
+function run(renderer, life) {
+  const { signal } = life;
   const root = document.documentElement;
   const stage = document.getElementById("stage");
   const readout = document.getElementById("readout");
@@ -90,6 +125,9 @@ function start(renderer) {
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setClearColor(0x000000, 0);
+  // A shader that fails to link throws (three.js only logs it by default), so
+  // the guard in start() can fall back.
+  renderer.debug.onShaderError = () => { throw new Error("a stage shader failed to compile"); };
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 1, 6000);
@@ -328,10 +366,10 @@ function start(renderer) {
     // Camera: orbit the room centre at the scroll-driven angles plus the drag offsets.
     stepDrag(drag, dt, state.elevation);  // momentum, friction and the elevation clamp
     const az = state.azimuth + drag.az, el = state.elevation + drag.el;
-    // Never closer than the fit (the whole room in the frame); after a turn that
-    // needed more room, close in again slowly so the view does not pump.
+    // Never closer than the fit (the whole room in the frame): out at once when
+    // the room needs more space, in again slowly so the view does not pump.
     const fit = cameraDistance({ aspect: camera.aspect, infer: state.infer, azimuth: az, elevation: el, fovY: FOV, frame: fitFrame });
-    distance = !(distance <= fit) ? fit : distance + (fit - distance) * Math.min(1, dt * DIST_EASE);
+    distance = easeDistance(distance, fit, dt);
     const dist = distance;
     camera.position.set(
       CENTRE.x + dist * Math.cos(el) * Math.cos(az),
@@ -374,9 +412,9 @@ function start(renderer) {
   };
   const interacted = () => { snap = false; };
   for (const type of ["wheel", "touchstart", "keydown", "pointerdown"]) {
-    window.addEventListener(type, interacted, { passive: true, capture: true });
+    window.addEventListener(type, interacted, { passive: true, capture: true, signal });
   }
-  window.addEventListener("scroll", readScroll, { passive: true });
+  window.addEventListener("scroll", readScroll, { passive: true, signal });
 
   // Where the page should start: ?p=, else a saved position on reload or back,
   // else the #hash target. The stage makes the page about four viewports taller
@@ -391,11 +429,11 @@ function start(renderer) {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     window.addEventListener("pagehide", () => {
       try { sessionStorage.setItem(KEY, String(window.scrollY)); } catch (_) { /* storage blocked */ }
-    });
+    }, { signal });
   } catch (_) { /* storage blocked: the browser's own restoration still runs */ }
 
   const settleScroll = () => {
-    if (!snap) return;  // the visitor has taken over
+    if (!snap || life.failed) return;  // the visitor has taken over, or the stage is gone
     measure();
     const instant = { behavior: "instant" };
     if (Number.isFinite(debugP)) {
@@ -412,31 +450,34 @@ function start(renderer) {
     distance = NaN;
   };
   requestAnimationFrame(settleScroll);  // after the has-stage layout
-  if (document.readyState !== "complete") window.addEventListener("load", settleScroll, { once: true });
+  if (document.readyState !== "complete") window.addEventListener("load", settleScroll, { once: true, signal });
   document.fonts?.ready.then(settleScroll);
 
   /* ---- Drag to rotate ------------------------------------------------------ */
   // Pointer events on the canvas; touch-action: pan-y in the CSS leaves vertical
   // swipes to the page, so a vertical swipe cancels the drag (pointercancel).
   let pointer = null;
-  let hintTimer = hint ? setTimeout(() => { hint.hidden = true; }, HINT_TIMEOUT) : 0;
+  if (hint) life.hintTimer = setTimeout(() => { hint.hidden = true; }, HINT_TIMEOUT);
   canvas.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || pointer !== null) return;
     pointer = e.pointerId;
-    dragStart(drag, e.clientX, e.clientY);
+    dragStart(drag, e.clientX, e.clientY, e.timeStamp / 1000);
     try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
-    if (hint && !hint.hidden) { hint.hidden = true; clearTimeout(hintTimer); }
+    if (hint && !hint.hidden) { hint.hidden = true; clearTimeout(life.hintTimer); }
     wake();
-  });
+  }, { signal });
   canvas.addEventListener("pointermove", (e) => {
-    if (e.pointerId === pointer) dragMove(drag, e.clientX, e.clientY, canvas.clientWidth);
-  });
+    if (e.pointerId === pointer) dragMove(drag, e.clientX, e.clientY, canvas.clientWidth, e.timeStamp / 1000);
+  }, { signal });
+  // A release keeps turning only after a fresh flick; a cancel (the page took a
+  // vertical swipe) or a lost capture stops the room where it is.
   const release = (e) => {
     if (e.pointerId !== pointer) return;
     pointer = null;
-    dragEnd(drag);
+    if (e.type === "pointerup") dragEnd(drag, e.timeStamp / 1000);
+    else dragCancel(drag);
   };
-  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) canvas.addEventListener(type, release);
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) canvas.addEventListener(type, release, { signal });
 
   /* ---- Size, visibility and the render loop -------------------------------- */
   const resize = () => {
@@ -450,18 +491,19 @@ function start(renderer) {
     dirty = true;
   };
   const relayout = () => { measure(); readScroll(); dirty = true; };
-  new ResizeObserver(resize).observe(canvas);
-  new ResizeObserver(relayout).observe(sequence);
-  window.addEventListener("resize", relayout);
-  wide.addEventListener?.("change", relayout);
-  reducedMotion.addEventListener?.("change", () => { dirty = true; });
+  const observe = (observer, el) => { life.observers.push(observer); observer.observe(el); };
+  observe(new ResizeObserver(resize), canvas);
+  observe(new ResizeObserver(relayout), sequence);
+  window.addEventListener("resize", relayout, { signal });
+  wide.addEventListener?.("change", relayout, { signal });
+  reducedMotion.addEventListener?.("change", () => { dirty = true; }, { signal });
 
   // Draw only while the stage is on screen.
   let visible = true, running = false, last = 0;
-  new IntersectionObserver(([entry]) => {
+  observe(new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
     if (visible) wake();
-  }).observe(stage);
+  }), stage);
 
   function wake() {
     dirty = true;
@@ -472,7 +514,7 @@ function start(renderer) {
   }
 
   function frame(now) {
-    if (!visible) { running = false; return; }
+    if (!visible || life.failed) { running = false; return; }
     requestAnimationFrame(frame);
     const dt = last ? Math.min(MAX_DT, (now - last) / 1000) : 0;
     last = now;
@@ -487,12 +529,20 @@ function start(renderer) {
     // Under reduced motion nothing moves on its own: skip frames that would not change.
     if (!moving && !dirty && reducedMotion.matches) return;
     dirty = false;
-    apply(progress, dt);
-    renderer.render(scene, camera);
+    try {
+      apply(progress, dt);
+      renderer.render(scene, camera);
+    } catch (err) {
+      life.fail(err);
+    }
   }
 
   measure();
   resize();
   readScroll();
+  // Draw the first frame now, inside start()'s guard: a shader or driver
+  // failure falls back before the empty stage is ever painted.
+  apply(progress, 0);
+  renderer.render(scene, camera);
   wake();
 }

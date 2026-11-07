@@ -325,6 +325,9 @@ h1 {
 @media (max-height: 30rem) {  /* landscape phones: the hero lead reaches the bottom */
   .drag-hint { display: none; }
 }
+@media (pointer: coarse) {  /* phones and tablets: a vertical drag scrolls, so no hint */
+  .drag-hint { display: none; }
+}
 
 /* Static field-line drawing (tools/fieldlines.py), only without the stage */
 .field {
