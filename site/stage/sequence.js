@@ -4,14 +4,20 @@
 import { ROOM } from "./model.js";
 
 // Where each chapter of the scroll begins and ends (progress 0..1).
-export const STAGES = { draw: [0, 0.16], sweep: [0.16, 0.62], hold: [0.62, 0.72], infer: [0.72, 1] };
+//   hint:  nothing of the field is drawn; particles drift along its lines.
+//   sweep: the plane crosses the room and leaves a reading where it cuts a line.
+//   hold:  the readings stay, the plane is gone.
+//   infer: rings appear and tighten, the field grows out of the sources along
+//          its lines and takes each reading with it, the arrows settle.
+export const STAGES = { hint: [0, 0.16], sweep: [0.16, 0.62], hold: [0.62, 0.72], infer: [0.72, 1] };
+// Planes of constant x at which the sweep records a reading on each line it cuts.
 export const NSLICES = 28;
-// Seconds over which the field lines also draw in by themselves after load, so
-// the hero is never an empty box (skipped under reduced motion).
+// Seconds over which the particles fade in after load, so the hero never pops
+// (skipped under reduced motion).
 export const INTRO_SECONDS = 2.5;
-// Resolution of each slice texture [along y, along z]: one field reading per texel.
+// Resolution of the scanning plane's live texture [along y, along z].
 export const SLICE_RES = [96, 58];
-// Centre of each recorded slice along the room's long axis, in cm.
+// Centre of each reading plane along the room's long axis, in cm.
 export const SLICE_X = Array.from({ length: NSLICES }, (_, i) => (i + 0.5) * ROOM[0] / NSLICES);
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -25,37 +31,38 @@ export function sequenceState(p, { time = 0, reducedMotion = false } = {}) {
   const [sweepA, sweepB] = STAGES.sweep;
   const [inferA] = STAGES.infer;
   const intro = reducedMotion ? 1 : smooth(0, INTRO_SECONDS, time);
-  const draw = Math.max(smooth(STAGES.draw[0], STAGES.draw[1], p), intro);
   const sweepX = lerp(-70, ROOM[0] + 70, clamp01((p - sweepA) / (sweepB - sweepA)));
   const infer = smooth(inferA, 1, p);
 
   // The scanning plane fades in as the sweep starts and out as it ends.
-  const planeOpacity = smooth(sweepA, sweepA + 0.03, p) * (1 - smooth(sweepB - 0.02, sweepB, p)) * 0.9;
+  const planeOpacity = smooth(sweepA, sweepA + 0.03, p) * (1 - smooth(sweepB - 0.02, sweepB, p)) * 0.55;
+  // The particles carry the hint alone, step back while the readings are the
+  // point, and come back with the field.
+  const particles = lerp(1, 0.4, smooth(sweepA, sweepA + 0.06, p)) + 0.6 * smooth(inferA + 0.10, inferA + 0.27, p);
 
-  // Each slice appears as the plane passes it, then dissolves during inference,
-  // starting at the walls and moving towards the centre.
-  const half = (NSLICES - 1) / 2;
-  const sliceOpacity = SLICE_X.map((x, i) => {
-    const shown = smooth(x - 4, x + 14, sweepX);
-    const order = Math.abs(i - half) / half; // 1 at the walls, 0 at the centre
-    const gone = smooth(inferA + 0.02 + (1 - order) * 0.14, inferA + 0.10 + (1 - order) * 0.14, p);
-    return shown * (1 - gone) * 0.85;
-  });
-
-  // Sources emerge: rings appear, tighten as the fit converges, then the arrow settles.
-  const ringReveal = smooth(inferA + 0.06, inferA + 0.12, p);
-  const converge = smooth(inferA + 0.10, inferA + 0.26, p);
-  const settle = smooth(inferA + 0.18, inferA + 0.27, p);
+  // Sources emerge: rings appear wide, tighten as the fit converges; while they
+  // tighten the field lines grow out of the sources (draw), and the arrow settles last.
+  const ringReveal = smooth(inferA + 0.04, inferA + 0.08, p);
+  const converge = smooth(inferA + 0.08, inferA + 0.22, p);
+  const draw = smooth(inferA + 0.10, inferA + 0.27, p);
+  const settle = smooth(inferA + 0.19, inferA + 0.27, p);
 
   // Slow orbit, a little higher and closer at the end; the wobble is skipped under reduced motion.
   const wobble = reducedMotion ? 0 : 0.08 * Math.sin(0.15 * time);
   return {
-    draw, sweepX, planeOpacity, infer, restore: infer * 0.85, sliceOpacity,
+    intro, particles, sweepX, planeOpacity, infer, draw,
     ringReveal, converge, settle,
     azimuth: lerp(-0.55, 0.45, p) + wobble,
     elevation: lerp(0.40, 0.30, p),
-    pulsesOn: !reducedMotion,
+    flow: !reducedMotion,  // particles move along the lines
   };
+}
+
+// How many readings the plane has passed: xs is the sorted x of every reading.
+export function countLit(xs, sweepX) {
+  let lo = 0, hi = xs.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (xs[mid] <= sweepX) lo = mid + 1; else hi = mid; }
+  return lo;
 }
 
 // Heat-map colour for t in 0..1 as [r, g, b, a] bytes: transparent navy to near white.
@@ -174,15 +181,15 @@ export function stepDrag(drag, dt, elevationBase) {
   if (el !== raw) { drag.el = el - elevationBase; drag.vEl = 0; }
 }
 
-// The two-line caption for the current stage.
-export function readoutText(p, state) {
+// The two-line caption for the current stage. `lit` is the number of readings
+// the plane has passed, `total` how many it records in all.
+export function readoutText(p, state, { lit = 0, total = 0 } = {}) {
   let stage;
-  if (p < STAGES.sweep[0]) stage = "field lines · 2 sources";
+  if (p < STAGES.sweep[0]) stage = "field · sources unknown";
   else if (p < STAGES.sweep[1]) {
     const x = Math.min(ROOM[0], Math.max(0, state.sweepX));
-    const slice = SLICE_X.filter((sx) => sx <= state.sweepX).length;
-    stage = `scan · x = ${Math.round(x).toString().padStart(3)} cm · slice ${slice.toString().padStart(2)} / ${NSLICES}`;
-  } else if (p < STAGES.infer[0]) stage = `data · ${NSLICES} slices · ${SLICE_RES[0] * SLICE_RES[1] * NSLICES} readings`;
+    stage = `scan · x = ${Math.round(x).toString().padStart(3)} cm · ${lit.toString().padStart(3)} readings`;
+  } else if (p < STAGES.infer[0]) stage = `data · ${total} readings · ${NSLICES} planes`;
   else stage = `inference · ${Math.round(state.infer * 100).toString().padStart(3)} %`;
   return `${stage}\nroom ${ROOM[0]} × ${ROOM[1]} × ${ROOM[2]} cm`;
 }

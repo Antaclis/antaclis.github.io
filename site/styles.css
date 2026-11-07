@@ -301,7 +301,7 @@ h1 {
   text-wrap: pretty;
 }
 
-/* Readout (scan position, slice count) and drag hint, in the stage corners */
+/* Readout (scan position, readings count) and drag hint, in the stage corners */
 .readout,
 .drag-hint {
   position: absolute;

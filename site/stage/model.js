@@ -126,3 +126,39 @@ export function logWindow(samples, lo = 0.25, hi = 0.997) {
   const at = (f) => sorted[Math.floor(sorted.length * f)];
   return { lo: at(lo), hi: at(hi) };
 }
+
+/**
+ * Whether a traced line ends at a dipole (it came back to a source) rather
+ * than at a wall: its last point lies within `radius` cm of some dipole.
+ */
+export function closesAtSource(pts, radius = 12) {
+  const n = pts.length;
+  const x = pts[n - 3], y = pts[n - 2], z = pts[n - 1];
+  return DIPOLES.some(({ position: p }) => Math.hypot(x - p[0], y - p[1], z - p[2]) < radius);
+}
+
+/**
+ * Where the planes of constant x in `xs` cross the lines: one reading per
+ * crossing, interpolated between the two points of the segment that straddles
+ * the plane. Returns flat arrays: `pos` [x, y, z, ...] in cm, `t` the position
+ * along the line (0 at its seed, 1 at its end), `line` the index of the line.
+ */
+export function sliceCrossings(lines, xs) {
+  const pos = [], t = [], line = [];
+  lines.forEach((pts, li) => {
+    const n = pts.length / 3;
+    for (let i = 0; i < n - 1; i++) {
+      const x0 = pts[3 * i], x1 = pts[3 * i + 3];
+      if (x0 === x1) continue;
+      const lo = Math.min(x0, x1), hi = Math.max(x0, x1);
+      for (const x of xs) {
+        if (x < lo || x >= hi) continue;
+        const f = (x - x0) / (x1 - x0);
+        pos.push(x, pts[3 * i + 1] + f * (pts[3 * i + 4] - pts[3 * i + 1]), pts[3 * i + 2] + f * (pts[3 * i + 5] - pts[3 * i + 2]));
+        t.push((i + f) / (n - 1));
+        line.push(li);
+      }
+    }
+  });
+  return { pos: Float32Array.from(pos), t: Float32Array.from(t), line: Uint16Array.from(line) };
+}

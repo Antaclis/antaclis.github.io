@@ -263,3 +263,39 @@ Fallbacks:
 - Drag rotation has momentum and friction and does not return to the origin.
 - The team section stays.
 - The page stays a dependency-free static site with the simulation computed in the browser.
+
+## Revision 2026-11-07: hint, readings, reconnection
+
+The first build drew the whole field at the top of the page, so the visitor saw the answer before
+the question. The sequence now withholds the field until the inference earns it. The physics,
+camera, drag, composition, fallbacks and copy are unchanged; only what the stage shows per beat.
+
+1. Hint (hero, p 0 to 0.16). No field lines. About 60 small lights drift along the invisible
+   lines, all at the same 34 cm/s so none overtakes another, each with a 30 cm trail that
+   follows the line and fades towards its end; they fade in over 2.5 s after load.
+   A light that reaches the end of its line starts again partway along another, chosen per
+   metre of line and at least 60 cm from any other light, and the lights dim within a metre
+   of a source, so the room stays scattered
+   and quiet rather than knotting at the sources. Under reduced motion they stand still. Readout: "field · sources unknown".
+2. Measure (p 0.16 to 0.62). The plane sweeps as before, with its live colour map at about half
+   its earlier opacity. It leaves no recorded slices. Wherever one of the 28 planes cuts a field
+   line it leaves one reading: a point in orange (`#FF8A3D`) that flashes near white
+   (`#FFD9AE`) as the plane passes and settles to an ember, with a slow shimmer while idle.
+   That gives 383 readings in all, denser near the sources. The lights dim to 40% so the data
+   is what the eye follows. Readout: "scan · x = 236 cm · 151 readings".
+3. Hold (p 0.62 to 0.72). The readings alone. Readout: "data · 383 readings · 28 planes".
+4. Infer (p 0.72 to 1). The rings appear wide (0.76 to 0.80) and tighten (0.80 to 0.94). While
+   they tighten the field grows out of each source along its lines (0.82 to 0.99): from the seed
+   end of every line and, for the 48 lines that return to a source, from the far end as well, so
+   the two halves meet in the middle with a bright tip on each growing end. A reading goes out
+   at the moment the line it sits on reaches it, so the field replaces the data point by point
+   and nothing orange is left at the end. The lights come back to full with the field. The
+   arrow and core settle last (0.91 to 0.99).
+
+Orange is the one warm colour on the page and it only ever means a measurement; the field and
+everything inferred stay in the blues. The ambient pulses that used to travel along the lines are
+gone: the drifting lights are that life now.
+
+Builder notes: `model.js` gained `closesAtSource` and `sliceCrossings` (the readings), and
+`sequence.js` exposes `intro`, `particles`, `draw` and `flow` instead of the slice opacities, the
+restore level and `pulsesOn`; the readout takes the lit and total reading counts.

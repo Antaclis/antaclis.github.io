@@ -6,7 +6,7 @@ plane, B = sum_k (3(m_k.r)r/|r|^5 - m_k/|r|^3), traced as field lines with
 is visible, which is the idea behind the site.
 
 Output replaces everything between the FIELD-LINES markers in
-site/index.html and tools/og.html, so the page itself needs no JavaScript.
+site/index.html, so the page itself needs no JavaScript (tools/og.js reuses them).
 
 Run from the repo root:   python tools/fieldlines.py            (inject)
                           python tools/fieldlines.py preview.png (raster preview only)
@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-TARGETS = [ROOT / "site" / "index.html", ROOT / "tools" / "og.html"]
+TARGETS = [ROOT / "site" / "index.html"]  # tools/og.js reads the lines from here
 
 W, H = 640, 500      # SVG viewBox
 MARGIN = 80          # lines are traced this far outside the viewBox, then clipped

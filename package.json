@@ -3,6 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "content": "node tools/content.js",
+    "og": "node tools/og.js",
+    "build": "node tools/content.js && node tools/og.js"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "2.6.2"
   }
 }

@@ -1,7 +1,7 @@
 // tests/model.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ROOM, DIPOLES, fieldAt, magnitudeAt, traceFieldLines, sliceSamples, logWindow } from "../site/stage/model.js";
+import { ROOM, DIPOLES, fieldAt, magnitudeAt, traceFieldLines, sliceSamples, logWindow, closesAtSource, sliceCrossings } from "../site/stage/model.js";
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
@@ -66,4 +66,35 @@ test("logWindow returns quantiles of the sorted samples", () => {
   const w = logWindow(Float32Array.from({ length: 1000 }, (_, k) => k));
   assert.equal(w.lo, 250);
   assert.equal(w.hi, 997);
+});
+
+test("closesAtSource tells lines that return to a dipole from lines that leave through a wall", () => {
+  const lines = traceFieldLines();
+  const closed = lines.filter((l) => closesAtSource(l));
+  assert.ok(closed.length >= 40 && closed.length < lines.length, `${closed.length} closed of ${lines.length}`);
+  for (const l of lines) {
+    const last = [l.at(-3), l.at(-2), l.at(-1)];
+    const atDipole = DIPOLES.some((d) => dist(last, d.position) < 12);
+    assert.equal(closesAtSource(l), atDipole);
+  }
+  assert.equal(closesAtSource(Float32Array.from([0, 0, 0, 250, 250, 150])), false);
+  assert.equal(closesAtSource(Float32Array.from([0, 0, 0, 150, 350, 65])), true);
+});
+
+test("sliceCrossings finds where the planes cut the lines", () => {
+  // A straight line from (10, 0, 0) to (110, 100, 50), 11 points: planes at x = 25 and 75 cut it.
+  const line = Float32Array.from({ length: 33 }, (_, k) => [10 + 10 * Math.floor(k / 3), 10 * Math.floor(k / 3), 5 * Math.floor(k / 3)][k % 3]);
+  const c = sliceCrossings([line], [25, 75, 500]);
+  assert.equal(c.t.length, 2);
+  assert.deepEqual(Array.from(c.pos), [25, 15, 7.5, 75, 65, 32.5]);
+  assert.ok(Math.abs(c.t[0] - 0.15) < 1e-6 && Math.abs(c.t[1] - 0.65) < 1e-6, "t is the position along the line");
+  assert.deepEqual(Array.from(c.line), [0, 0]);
+
+  const xs = Array.from({ length: 28 }, (_, i) => (i + 0.5) * 500 / 28);
+  const real = sliceCrossings(traceFieldLines(), xs);
+  assert.ok(real.t.length > 300 && real.t.length < 600, `${real.t.length} readings: sparse, not a heat map`);
+  for (let k = 0; k < real.t.length; k++) {
+    assert.ok(xs.some((x) => Math.abs(x - real.pos[3 * k]) < 1e-4), "every reading sits on a plane");
+    assert.ok(real.t[k] >= 0 && real.t[k] <= 1);
+  }
 });
