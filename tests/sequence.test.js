@@ -35,6 +35,9 @@ test("inference dissolves the slices, tightens the rings and settles the markers
   assert.ok(end.sliceOpacity.every((o) => o === 0));
   assert.equal(end.ringReveal, 1); assert.equal(end.converge, 1); assert.equal(end.settle, 1);
   near(end.restore, 0.85);
+  assert.equal(end.infer, 1, "inference progress is exposed for the camera distance");
+  assert.equal(sequenceState(0.5).infer, 0);
+  assert.ok(sequenceState(0.86).infer > 0 && sequenceState(0.86).infer < 1);
   const early = sequenceState(0.80);
   assert.ok(early.ringReveal > 0 && early.settle === 0, "rings appear before the arrow");
   assert.ok(early.sliceOpacity[0] < early.sliceOpacity[13], "walls dissolve before the centre");
@@ -67,6 +70,7 @@ test("progress within the sequence clamps on both sides", () => {
   assert.equal(progressWithin(-200, 0, 5000, 900), 0);
   near(progressWithin(2050, 0, 5000, 900), 0.5);
   assert.equal(progressWithin(9000, 0, 5000, 900), 1, "deep links past the sequence show the final state");
+  assert.ok(Number.isFinite(progressWithin(0, 0, 900, 900)), "no NaN when the sequence is one viewport tall");
 });
 
 test("drag has momentum, friction, an elevation clamp and a clean end", () => {

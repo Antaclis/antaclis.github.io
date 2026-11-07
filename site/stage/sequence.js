@@ -6,6 +6,8 @@ import { ROOM } from "./model.js";
 // Where each chapter of the scroll begins and ends (progress 0..1).
 export const STAGES = { draw: [0, 0.16], sweep: [0.16, 0.62], hold: [0.62, 0.72], infer: [0.72, 1] };
 export const NSLICES = 28;
+// Resolution of each slice texture [along y, along z]: one field reading per texel.
+export const SLICE_RES = [96, 58];
 // Centre of each recorded slice along the room's long axis, in cm.
 export const SLICE_X = Array.from({ length: NSLICES }, (_, i) => (i + 0.5) * ROOM[0] / NSLICES);
 
@@ -44,7 +46,7 @@ export function sequenceState(p, { time = 0, reducedMotion = false } = {}) {
   // Slow orbit, a little higher and closer at the end; the wobble is skipped under reduced motion.
   const wobble = reducedMotion ? 0 : 0.08 * Math.sin(0.15 * time);
   return {
-    draw, sweepX, planeOpacity, restore: infer * 0.85, sliceOpacity,
+    draw, sweepX, planeOpacity, infer, restore: infer * 0.85, sliceOpacity,
     ringReveal, converge, settle,
     azimuth: lerp(-0.55, 0.45, p) + wobble,
     elevation: lerp(0.40, 0.30, p),
@@ -69,7 +71,7 @@ export function cameraDistance(aspect, infer) {
 
 // Scroll progress through the sequence section, clamped to 0..1.
 export function progressWithin(scrollTop, sequenceTop, sequenceHeight, viewportHeight) {
-  return clamp01((scrollTop - sequenceTop) / (sequenceHeight - viewportHeight));
+  return clamp01((scrollTop - sequenceTop) / Math.max(1, sequenceHeight - viewportHeight));
 }
 
 // Drag to rotate: az and el are offsets added to the scroll-driven camera angles.
@@ -113,7 +115,7 @@ export function readoutText(p, state) {
     const x = Math.min(ROOM[0], Math.max(0, state.sweepX));
     const slice = SLICE_X.filter((sx) => sx <= state.sweepX).length;
     stage = `scan · x = ${Math.round(x).toString().padStart(3)} cm · slice ${slice.toString().padStart(2)} / ${NSLICES}`;
-  } else if (p < STAGES.infer[0]) stage = `data · ${NSLICES} slices · ${96 * 58 * NSLICES} readings`;
-  else stage = `inference · ${Math.round(smooth(STAGES.infer[0], 1, p) * 100).toString().padStart(3)} %`;
+  } else if (p < STAGES.infer[0]) stage = `data · ${NSLICES} slices · ${SLICE_RES[0] * SLICE_RES[1] * NSLICES} readings`;
+  else stage = `inference · ${Math.round(state.infer * 100).toString().padStart(3)} %`;
   return `${stage}\nroom ${ROOM[0]} × ${ROOM[1]} × ${ROOM[2]} cm`;
 }

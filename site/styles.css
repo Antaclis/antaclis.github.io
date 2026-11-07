@@ -189,7 +189,10 @@ a:hover { color: var(--accent); }
 
    The stage is 100vh tall and sticky; the beats are pulled up over it by
    -100vh, so the sequence is as tall as the beats (520vh) and the stage stays
-   pinned for 420vh of scrolling, then scrolls away with the page. Each
+   pinned for 420vh of scrolling, then scrolls away with the page. (Where
+   supported, both use 100svh so the stage fits above a phone's toolbar; the
+   sequence stays 520vh and stage.js measures it, so progress still ends at 1
+   as the stage unpins.) Each
    caption is sticky inside its own beat. Progress p = scrolled / 420vh, so:
      p = 0.16 (sweep starts)     at  67vh: "Measure." has entered the view
      p = 0.72 (inference starts) at 302vh: "Infer." is pinned at 28vh        */
@@ -200,6 +203,7 @@ a:hover { color: var(--accent); }
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100svh;
   overflow: hidden;
 }
 .stage canvas {
@@ -216,18 +220,36 @@ a:hover { color: var(--accent); }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to bottom, var(--bg) 35%, transparent 70%);
+  background: linear-gradient(to bottom, var(--bg) 50%, transparent 64%);
 }
-@media (min-width: 56rem) {
+/* Wide or landscape: stage.js puts the room right of the text, the scrim
+   runs left to right. Keep this query in step with WIDE in stage.js. */
+@media (min-width: 56rem), (min-aspect-ratio: 3/2) {
   .scrim {
+    /* Right edge of the caption column (.beat centring and gutter, then
+       .caption's max width): solid behind the text, fading out beyond it */
+    --text-edge: calc(max(0px, (100% - var(--max)) / 2) + var(--gutter) + var(--caption));
     background: linear-gradient(to right,
-      var(--bg) 0%, rgb(13 15 34 / 0.85) 24%, transparent 55%);
+      var(--bg) 0, var(--bg) calc(var(--text-edge) - 12rem),
+      rgb(13 15 34 / 0.88) calc(var(--text-edge) - 1rem),
+      transparent calc(var(--text-edge) + 9rem));
   }
+}
+/* Phones and portrait tablets: the room sits below the pinned captions, so a
+   caption scrolling in from the bottom crosses it. A soft veil travels with
+   each caption to keep its text legible on the way. */
+.has-stage .caption {
+  background: rgb(13 15 34 / 0.9);
+  box-shadow: 0 0 1.5rem 1.25rem rgb(13 15 34 / 0.9);
+}
+@media (min-width: 56rem), (min-aspect-ratio: 3/2) {
+  .has-stage .caption { background: none; box-shadow: none; }
 }
 
 .beats {
   position: relative;
   margin-top: -100vh;
+  margin-top: -100svh;
   pointer-events: none;  /* drags reach the stage... */
 }
 .beat {
@@ -297,6 +319,9 @@ h1 {
 .drag-hint { left: max(var(--gutter), env(safe-area-inset-left, 0px)); }
 @media (max-width: 22.49rem) {  /* below 360px */
   .readout, .drag-hint { display: none; }
+}
+@media (max-height: 30rem) {  /* landscape phones: the hero lead reaches the bottom */
+  .drag-hint { display: none; }
 }
 
 /* Static field-line drawing (tools/fieldlines.py), only without the stage */
