@@ -59,3 +59,10 @@ test("the team section is kept with four people", () => {
   assert.equal((html.match(/class="person"/g) || []).length, 4);
   assert.match(html, /linkedin\.com\/in\/aurelio-amerio/);
 });
+
+test("the social preview source matches the page", () => {
+  const og = readFileSync("tools/og.html", "utf8");
+  assert.ok(!/early-stage|research project|Inter/i.test(og));
+  assert.ok(og.includes("Seeing through"));
+  assert.ok(og.includes("schibsted-grotesk-latin-wght.woff2"));
+});
