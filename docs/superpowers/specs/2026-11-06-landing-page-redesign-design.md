@@ -234,10 +234,10 @@ Fallbacks:
 
 ## Domain and deployment
 
-- Add `site/CNAME` containing `antaclis.com`. GitHub Pages then serves the custom domain and
-  redirects `antaclis.github.io` to it once DNS is set (A records to GitHub's four Pages IPs and
-  a `www` CNAME to `antaclis.github.io`; the team does this at the registrar, and enables
-  "Enforce HTTPS" in the repository's Pages settings after the certificate is issued).
+- DNS for antaclis.com already points at GitHub Pages and the site is live there (confirmed
+  2026-11-07), so the domain switch ships in the same deploy as the redesign. Add `site/CNAME`
+  containing `antaclis.com` so the custom domain survives every Actions deploy, and check that
+  "Enforce HTTPS" is on in the repository's Pages settings.
 - Canonical URL, Open Graph URL and image URL, and the twitter card use `https://antaclis.com/`.
 - Email everywhere: `contact@antaclis.com`. The old Gmail address is removed.
 - Regenerate `site/assets/og.png` from `tools/og.html` with the new lead line, and remove the
