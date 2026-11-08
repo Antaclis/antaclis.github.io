@@ -12,3 +12,5 @@ vendor/
 
 # Node packages (only the og image tool needs them)
 node_modules/
+
+.revisions/
