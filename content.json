@@ -57,28 +57,28 @@
   },
   "team": {
     "title": "Team",
-    "_note": "Alphabetical by surname. Each person should approve their own line.",
+    "_note": "By seniority. Each person should approve their own line.",
     "link_hint": "(LinkedIn, opens in a new tab)",
     "people": [
       {
-        "name": "Aurelio Amerio",
-        "url": "https://www.linkedin.com/in/aurelio-amerio/",
-        "line": "PhD in Physics, Universitat de València."
+        "name": "Veronica Sanz",
+        "url": "https://www.linkedin.com/in/profveronicasanz/",
+        "line": "Principal investigator. Professor of theoretical physics at the Universitat de València and IFIC researcher."
       },
       {
-        "name": "Andrei Bocharnikov",
-        "url": "https://www.linkedin.com/in/andrei-bocharnikov/",
-        "line": "Physics and Mathematics student at the Universitat de València."
+        "name": "Aurelio Amerio",
+        "url": "https://www.linkedin.com/in/aurelio-amerio/",
+        "line": "Researcher. PhD in machine learning methods applied to physics."
       },
       {
         "name": "Pau Piera Sapiña",
         "url": "https://www.linkedin.com/in/pau-piera-sapi%C3%B1a-7147262b4/",
-        "line": "Physicist, Universitat de València."
+        "line": "MSc in experimental particle physics, with a focus on quantum technologies."
       },
       {
-        "name": "Veronica Sanz",
-        "url": "https://www.linkedin.com/in/profveronicasanz/",
-        "line": "Professor at the Universitat de València and IFIC researcher."
+        "name": "Andrei Bocharnikov",
+        "url": "https://www.linkedin.com/in/andrei-bocharnikov/",
+        "line": "BSc in physics and mathematics."
       }
     ]
   },
