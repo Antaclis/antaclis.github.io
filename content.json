@@ -1,0 +1,95 @@
+{
+  "_about": "Every piece of text on the page. Edit here, then run `npm run build` to write it into site/index.html and redraw the social preview image. `npm test` fails while they are out of step.",
+  "meta": {
+    "title": "Antaclis · Seeing through fields",
+    "description": "Antaclis builds AI for magnetic sensing: physics simulation and machine learning that turn what a sensor reads into the properties of what produced it. Sensor, simulation and inference, built as one system.",
+    "image_alt": "Antaclis logo and the words 'Seeing through fields.' next to magnetic field lines."
+  },
+  "header": {
+    "skip_link": "Skip to content",
+    "wordmark": "Antaclis",
+    "nav": {
+      "work": "What we do",
+      "team": "Team",
+      "contact": "Contact"
+    }
+  },
+  "hero": {
+    "title": "Seeing through fields.",
+    "lead": "AI for inverse problems in magnetic sensing. We simulate the physics, learn from it, and turn what a sensor reads into what produced it.",
+    "drag_hint": "drag to rotate"
+  },
+  "beats": {
+    "measure": {
+      "title": "Measure.",
+      "text": "A quantum magnetometer scans the magnetic field in the room."
+    },
+    "infer": {
+      "title": "Infer.",
+      "text": "Simulation-based AI traces the data back to the sources of the field and characterises them: where they are, how strong, what they are made of."
+    },
+    "landing": {
+      "title": "That is Antaclis.",
+      "text": "Custom AI for your problems, informed by physics."
+    }
+  },
+  "work": {
+    "title": "What we do",
+    "statement": "You build the system, we take the measurements. Sensor, simulation and machine learning, built together, turn them into the insight you need.",
+    "topics": [
+      {
+        "title": "Magnetic sensors",
+        "text": "Quantum and classical magnetometers, built or adapted for the problem and modelled down to their instrumental limits."
+      },
+      {
+        "title": "Physics simulation",
+        "text": "Differentiable simulations of fields, sources and sensors, written to feed our machine learning directly."
+      },
+      {
+        "title": "Machine learning",
+        "text": "Simulation-based inference: models trained on our simulations and calibrated against real measurements, closing the gap between theory and the lab."
+      },
+      {
+        "title": "Inverse problems",
+        "text": "From readings back to the physical properties that generated them, with Bayesian uncertainties and confidence levels rather than a single best guess."
+      }
+    ]
+  },
+  "team": {
+    "title": "Team",
+    "_note": "By seniority. Each person should approve their own line.",
+    "link_hint": "(LinkedIn, opens in a new tab)",
+    "people": [
+      {
+        "name": "Veronica Sanz",
+        "url": "https://www.linkedin.com/in/profveronicasanz/",
+        "line": "Principal investigator. Professor of theoretical physics at the Universitat de València and IFIC researcher."
+      },
+      {
+        "name": "Aurelio Amerio",
+        "url": "https://www.linkedin.com/in/aurelio-amerio/",
+        "line": "Postdoctoral Researcher. PhD in machine learning methods applied to physics, with a focus on inverse problems."
+      },
+      {
+        "name": "Pau Piera Sapiña",
+        "url": "https://www.linkedin.com/in/pau-piera-sapi%C3%B1a-7147262b4/",
+        "line": "MSc in experimental particle physics, with a focus on quantum technologies."
+      },
+      {
+        "name": "Andrei Bocharnikov",
+        "url": "https://www.linkedin.com/in/andrei-bocharnikov/",
+        "line": "BSc in physics and mathematics at the University of Valencia."
+      }
+    ]
+  },
+  "contact": {
+    "title": "Contact",
+    "statement": "Building something that involves magnetic fields? Write to us.",
+    "button": "Contact us",
+    "email": "contact@antaclis.com",
+    "subject": "Antaclis enquiry"
+  },
+  "footer": {
+    "copyright": "© 2026 Antaclis"
+  }
+}

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Antaclis · Seeing through fields</title>
-  <meta name="description" content="Antaclis builds AI for magnetic quantum sensing: simulation and machine learning that turn sensor readings into answers.">
+  <title data-text="meta.title">Antaclis · Seeing through fields</title>
+  <meta name="description" data-text="meta.description" content="Antaclis builds AI for magnetic sensing: physics simulation and machine learning that turn what a sensor reads into the properties of what produced it. Sensor, simulation and inference, built as one system.">
   <link rel="canonical" href="https://antaclis.com/">
   <meta name="theme-color" content="#0D0F22">
 
@@ -16,41 +16,44 @@
   <!-- Social preview (Open Graph: LinkedIn, Slack, WhatsApp...; Twitter/X card) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Antaclis">
-  <meta property="og:title" content="Antaclis · Seeing through fields">
-  <meta property="og:description" content="Antaclis builds AI for magnetic quantum sensing: simulation and machine learning that turn sensor readings into answers.">
+  <meta property="og:title" data-text="meta.title" content="Antaclis · Seeing through fields">
+  <meta property="og:description" data-text="meta.description" content="Antaclis builds AI for magnetic sensing: physics simulation and machine learning that turn what a sensor reads into the properties of what produced it. Sensor, simulation and inference, built as one system.">
   <meta property="og:url" content="https://antaclis.com/">
   <meta property="og:image" content="https://antaclis.com/assets/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Antaclis logo and the words 'Seeing through fields.' next to magnetic field lines.">
+  <meta property="og:image:alt" data-text="meta.image_alt" content="Antaclis logo and the words 'Seeing through fields.' next to magnetic field lines.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Antaclis · Seeing through fields">
-  <meta name="twitter:description" content="Antaclis builds AI for magnetic quantum sensing: simulation and machine learning that turn sensor readings into answers.">
+  <meta name="twitter:title" data-text="meta.title" content="Antaclis · Seeing through fields">
+  <meta name="twitter:description" data-text="meta.description" content="Antaclis builds AI for magnetic sensing: physics simulation and machine learning that turn what a sensor reads into the properties of what produced it. Sensor, simulation and inference, built as one system.">
   <meta name="twitter:image" content="https://antaclis.com/assets/og.png">
 
   <link rel="preload" href="fonts/schibsted-grotesk-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main" data-text="header.skip_link">Skip to content</a>
 
   <header class="site-header">
     <div class="wrap">
       <a class="brand" href="#main">
         <img src="assets/logo-mark-dark.png" alt="" width="32" height="32">
-        <span class="wordmark">Antaclis</span>
+        <span class="wordmark" data-text="header.wordmark">Antaclis</span>
       </a>
       <nav class="site-nav" aria-label="Main">
         <ul>
-          <li class="nav-optional"><a href="#work">What we do</a></li>
-          <li><a href="#team">Team</a></li>
-          <li><a href="#contact">Contact</a></li>
+          <li class="nav-optional"><a href="#work" data-text="header.nav.work">What we do</a></li>
+          <li><a href="#team" data-text="header.nav.team">Team</a></li>
+          <li><a href="#contact" data-text="header.nav.contact">Contact</a></li>
         </ul>
       </nav>
     </div>
   </header>
 
   <main id="main">
+
+    <!-- All text on the page comes from content.json: elements marked data-text,
+         data-href and the CONTENT lists are written by tools/content.js. -->
 
     <!-- The scroll sequence. stage/stage.js draws the field simulation on the canvas
          and adds the class has-stage to <html>; the captions scroll past it. Without
@@ -61,15 +64,15 @@
         <canvas id="stage-canvas"></canvas>
         <div class="scrim"></div>
         <p class="readout" id="readout" hidden></p>
-        <p class="drag-hint" id="drag-hint" hidden>drag to rotate</p>
+        <p class="drag-hint" id="drag-hint" hidden data-text="hero.drag_hint">drag to rotate</p>
       </div>
 
       <div class="beats">
         <div class="beat beat-hero">
           <div class="caption">
             <div class="hero-text">
-              <h1 id="hero-title">Seeing through fields.</h1>
-              <p class="lead">AI for magnetic quantum sensing. Simulation and machine learning that turn what a sensor reads into what produced it.</p>
+              <h1 id="hero-title" data-text="hero.title">Seeing through fields.</h1>
+              <p class="lead" data-text="hero.lead">AI for inverse problems in magnetic sensing. We simulate the physics, learn from it, and turn what a sensor reads into what produced it.</p>
             </div>
             <!-- Generated by tools/fieldlines.py: edit the script, not the paths.
                  Shown only when the WebGL stage is not running. -->
@@ -104,22 +107,22 @@
 
         <div class="beat beat-measure">
           <div class="caption">
-            <h2>Measure.</h2>
-            <p>A quantum magnetometer records the field, plane by plane.</p>
+            <h2 data-text="beats.measure.title">Measure.</h2>
+            <p data-text="beats.measure.text">A quantum magnetometer scans the magnetic field in the room.</p>
           </div>
         </div>
 
         <div class="beat beat-infer">
           <div class="caption">
-            <h2>Infer.</h2>
-            <p>Simulation and machine learning trace the data back to its sources: where they are, how strong, which way they point.</p>
+            <h2 data-text="beats.infer.title">Infer.</h2>
+            <p data-text="beats.infer.text">Simulation-based AI traces the data back to the sources of the field and characterises them: where they are, how strong, what they are made of.</p>
           </div>
         </div>
 
         <div class="beat beat-landing">
           <div class="caption">
-            <h2>That is Antaclis.</h2>
-            <p>Custom AI for problems built around magnetic quantum sensors.</p>
+            <h2 data-text="beats.landing.title">That is Antaclis.</h2>
+            <p data-text="beats.landing.text">Custom AI for your problems, informed by physics.</p>
           </div>
         </div>
       </div>
@@ -127,62 +130,67 @@
 
     <section class="section" id="work" aria-labelledby="work-title">
       <div class="wrap">
-        <h2 class="section-title" id="work-title">What we do</h2>
-        <p class="statement">Custom AI solutions for problems built around magnetic quantum sensors.</p>
+        <h2 class="section-title" id="work-title" data-text="work.title">What we do</h2>
+        <p class="statement" data-text="work.statement">You build the system, we take the measurements. Sensor, simulation and machine learning, built together, turn them into the insight you need.</p>
 
         <div class="topics">
+          <!-- CONTENT:topics:START -->
           <article class="topic">
-            <h3>Quantum sensors</h3>
-            <p>Quantum magnetometers, modelled down to their noise, drift and limits.</p>
+            <h3>Magnetic sensors</h3>
+            <p>Quantum and classical magnetometers, built or adapted for the problem and modelled down to their instrumental limits.</p>
           </article>
           <article class="topic">
             <h3>Physics simulation</h3>
-            <p>Differentiable simulations of fields, sources and sensors, fast enough to run many thousands of times.</p>
+            <p>Differentiable simulations of fields, sources and sensors, written to feed our machine learning directly.</p>
           </article>
           <article class="topic">
             <h3>Machine learning</h3>
-            <p>Models trained on simulated data and calibrated against real measurements.</p>
+            <p>Simulation-based inference: models trained on our simulations and calibrated against real measurements, closing the gap between theory and the lab.</p>
           </article>
           <article class="topic">
             <h3>Inverse problems</h3>
-            <p>From readings back to causes, with uncertainties rather than a single best guess.</p>
+            <p>From readings back to the physical properties that generated them, with Bayesian uncertainties and confidence levels rather than a single best guess.</p>
           </article>
+          <!-- CONTENT:topics:END -->
         </div>
       </div>
     </section>
 
     <section class="section" id="team" aria-labelledby="team-title">
       <div class="wrap">
-        <h2 class="section-title" id="team-title">Team</h2>
+        <h2 class="section-title" id="team-title" data-text="team.title">Team</h2>
         <!-- Alphabetical by surname. Each person should approve their own line. -->
         <ul class="team">
+          <!-- CONTENT:team:START -->
           <li class="person">
-            <a href="https://www.linkedin.com/in/aurelio-amerio/" target="_blank" rel="noopener noreferrer">Aurelio Amerio<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
-            <p>PhD in Physics, Universitat de València.</p>
+            <a href="https://www.linkedin.com/in/profveronicasanz/" target="_blank" rel="noopener noreferrer">Veronica Sanz<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
+            <p>Principal investigator. Professor of theoretical physics at the Universitat de València and IFIC researcher.</p>
           </li>
           <li class="person">
-            <a href="https://www.linkedin.com/in/andrei-bocharnikov/" target="_blank" rel="noopener noreferrer">Andrei Bocharnikov<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
-            <p>Physics and Mathematics student at the Universitat de València.</p>
+            <a href="https://www.linkedin.com/in/aurelio-amerio/" target="_blank" rel="noopener noreferrer">Aurelio Amerio<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
+            <p>Researcher. PhD in machine learning methods applied to physics.</p>
           </li>
           <li class="person">
             <a href="https://www.linkedin.com/in/pau-piera-sapi%C3%B1a-7147262b4/" target="_blank" rel="noopener noreferrer">Pau Piera Sapiña<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
-            <p>Physicist, Universitat de València.</p>
+            <p>MSc in experimental particle physics, with a focus on quantum technologies.</p>
           </li>
           <li class="person">
-            <a href="https://www.linkedin.com/in/profveronicasanz/" target="_blank" rel="noopener noreferrer">Veronica Sanz<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
-            <p>Professor at the Universitat de València and IFIC researcher.</p>
+            <a href="https://www.linkedin.com/in/andrei-bocharnikov/" target="_blank" rel="noopener noreferrer">Andrei Bocharnikov<span class="visually-hidden"> (LinkedIn, opens in a new tab)</span></a>
+            <p>BSc in physics and mathematics.</p>
           </li>
+          <!-- CONTENT:team:END -->
         </ul>
       </div>
     </section>
 
     <section class="section" id="contact" aria-labelledby="contact-title">
       <div class="wrap">
-        <h2 class="section-title" id="contact-title">Contact</h2>
-        <p class="statement">Working on something that involves magnetic sensors? Write to us.</p>
+        <h2 class="section-title" id="contact-title" data-text="contact.title">Contact</h2>
+        <p class="statement" data-text="contact.statement">Building something that involves magnetic fields? Write to us.</p>
         <div class="contact-actions">
-          <a class="button" href="mailto:contact@antaclis.com?subject=Antaclis%20enquiry">Write to contact@antaclis.com</a>
-          <p class="email">contact@antaclis.com</p>
+          <a class="button" href="mailto:contact@antaclis.com?subject=Antaclis%20enquiry" data-href="contact.mailto_subject" data-text="contact.button">Contact us</a>
+          <!-- The address as plain text, for anyone without a mail app set up -->
+          <p class="email" data-text="contact.email">contact@antaclis.com</p>
         </div>
       </div>
     </section>
@@ -191,10 +199,10 @@
 
   <footer class="site-footer">
     <div class="wrap">
-      <p>© 2026 Antaclis</p>
+      <p data-text="footer.copyright">© 2026 Antaclis</p>
+      <a href="mailto:contact@antaclis.com" data-href="contact.mailto" data-text="contact.email">contact@antaclis.com</a>
     </div>
   </footer>
 
-  <script type="module" src="stage/stage.js"></script>
-</body>
+  <script type="module" src="stage/stage.js"></script></body>
 </html>

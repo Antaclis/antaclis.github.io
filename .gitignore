@@ -9,3 +9,8 @@ vendor/
 
 # Internal project documents: never publish
 *.tex
+
+# Node packages (only the og image tool needs them)
+node_modules/
+
+.revisions/

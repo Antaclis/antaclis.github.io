@@ -22,6 +22,26 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # The page text lives in content.json. Write it into the HTML and redraw
+      # the social preview image here, so editing the JSON on main is enough to
+      # update the site; the committed files may lag, and a note in the log says so.
+      - name: Write the page text and the social preview image from content.json
+        run: |
+          npm run build
+          if ! git diff --quiet; then
+            echo "::notice::content.json was ahead of the committed page or image; the deploy used the JSON. Run npm run build and commit to bring the repo in line."
+          fi
+
+      # Nothing deploys unless the tests pass (page copy, stage maths, content in step).
+      - name: Test
+        run: npm test
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
