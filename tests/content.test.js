@@ -31,7 +31,7 @@ test("domain, email and metadata point at antaclis.com", () => {
 test("the spec's copy is on the page", () => {
   for (const line of ["Seeing through fields.", "Measure.", "Infer.", "That is Antaclis.",
                       "You build the system, we take the measurements.",
-                      "Magnetic sensors", "Physics simulation", "Machine learning", "Inverse problems",
+                      "Magnetic sensors", "Physics simulation", "Machine learning", "Inverse design",
                       "Write to us", "© 2026 Antaclis"]) {
     assert.ok(html.includes(line), `missing: ${line}`);
   }
