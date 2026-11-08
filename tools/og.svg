@@ -41,7 +41,7 @@
   <text x="170" y="154.8" font-size="26" font-weight="600" letter-spacing="5.72" fill="#E8EAF2">ANTACLIS</text>
   <text x="88" y="286.6" font-size="84" font-weight="500" letter-spacing="-2.94" fill="#E8EAF2">Seeing through</text>
   <text x="88" y="372.2" font-size="84" font-weight="500" letter-spacing="-2.94" fill="#E8EAF2">fields.</text>
-  <text x="88" y="444.7" font-size="22" font-weight="500" fill="#A2A8C0">AI for magnetic quantum sensing. Simulation and</text>
-  <text x="88" y="476.6" font-size="22" font-weight="500" fill="#A2A8C0">machine learning that turn what a sensor reads into</text>
-  <text x="88" y="508.5" font-size="22" font-weight="500" fill="#A2A8C0">what produced it.</text>
+  <text x="88" y="444.7" font-size="22" font-weight="500" fill="#A2A8C0">AI for inverse problems in magnetic sensing. We</text>
+  <text x="88" y="476.6" font-size="22" font-weight="500" fill="#A2A8C0">simulate the physics, learn from it, and turn what a</text>
+  <text x="88" y="508.5" font-size="22" font-weight="500" fill="#A2A8C0">sensor reads into what produced it.</text>
 </svg>
