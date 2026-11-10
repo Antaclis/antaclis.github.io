@@ -50,7 +50,7 @@
         "text": "Simulation-based inference: models trained on our simulations and calibrated against real measurements, closing the gap between theory and the lab."
       },
       {
-        "title": "Inverse problems",
+        "title": "Inverse design",
         "text": "From readings back to the physical properties that generated them, with Bayesian uncertainties and confidence levels rather than a single best guess."
       }
     ]
