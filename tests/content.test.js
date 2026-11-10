@@ -59,8 +59,8 @@ test("fonts are self-hosted and the old ones are gone", () => {
   assert.ok(!/fonts\.googleapis|cdn\./.test(html + css), "no third-party requests");
 });
 
-test("the team section is kept with four people", () => {
-  assert.equal((html.match(/class="person"/g) || []).length, 4);
+test("the team section is kept with five people", () => {
+  assert.equal((html.match(/class="person"/g) || []).length, 5);
   assert.match(html, /linkedin\.com\/in\/aurelio-amerio/);
 });
 
@@ -93,7 +93,7 @@ test("editing content.json changes the page, with escaping and the derived links
   assert.ok(out.includes('href="mailto:hello@example.org?subject=Hi%20there" data-href="contact.mailto_subject" data-text="contact.button">Contact us</a>'));
   assert.ok(out.includes('<a href="mailto:hello@example.org" data-href="contact.mailto" data-text="contact.email">hello@example.org</a>'));
   assert.equal((out.match(/class="topic"/g) || []).length, 2, "the topics list is regenerated");
-  assert.equal((out.match(/class="person"/g) || []).length, 4);
+  assert.equal((out.match(/class="person"/g) || []).length, 5);
   assert.throws(() => render('<p data-text="no.such.key">x</p>', content), /no "no\.such\.key"/);
   assert.ok(!("team._note" in flatten(content)), "editor notes are not keys");
 });
